@@ -1,2 +1,2 @@
-# BlackJack-sim
+# BlackJack Simluation
 
