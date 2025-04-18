@@ -34,7 +34,7 @@ class base():
         if self.points[0]>21:
             self.status = "boom"
 
-class player(base):
+class Player(base):
 
     def __init__(self):
         super().__init__()
@@ -65,7 +65,8 @@ class player(base):
                 else:
                     if len(self.points) > 1: # if soft hand and upper limit less than stopUntil hit regardless
                         self.hit(gameDeck)
-                    elif 
+                    else:
+                        pass
 
             
 
@@ -85,7 +86,7 @@ class player(base):
                 self.status = "tie"
 
 
-class dealer(base):
+class Dealer(base):
 
     def __init__(self):
         super().__init__()
@@ -117,7 +118,7 @@ def boomrate(players, boss):
             boom+=1
     return boom/len(players)
 
-class game():
+class Game():
     def __init__(self, numOfDecks):
         self.numOfDeck = numOfDecks
         self.deck = newdeck(numOfDecks)
@@ -128,8 +129,8 @@ class game():
             self.reshuffle()
         self.players = dict()
         for i in range(1,numOfPlayers+1):
-             self.players[f"Player {i}"] = player()
-        self.house = dealer()
+             self.players[f"Player {i}"] = Player()
+        self.house = Dealer()
         for t in self.players:
             self.players[t].hit(self.deck)
         self.house.hit(self.deck)
@@ -167,7 +168,7 @@ class game():
 # graph for different players and different strategy
 
 
-temp = game(3)
+temp = Game(3)
 print(len(temp.deck))
 temp.start(3)
 temp.getcards()
