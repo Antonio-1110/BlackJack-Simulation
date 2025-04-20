@@ -1,6 +1,5 @@
 import random
 import math
-import statistics
 
 def newdeck(x):
     deck = []
@@ -18,7 +17,7 @@ class Base():
         self.cards = []
         self.status = "live"
         self.points = [0]
-        self.haveAce = False
+        self.noAce = True
 
     def calpoints(self):
             for card in self.cards:
@@ -29,14 +28,14 @@ class Base():
                 self.points.append(self.points[0]+10)
 
     def hit(self,deck):
-        self.cards.append(deck.pop(0))
-        self.points[0] += 10 if self.cards[-1][0] > 10 else self.cards[-1][0]
-        if self.cards[-1][0] == 1 and self.points[0]+10 < 22:
-            self.points.append(self.points[0]+10)
-        if len(self.points) > 1 and self.points[-1]>21:
-            pass
-        if self.points[0]>21:
-            self.status = "boom"
+            self.cards.append(deck.pop(0))
+            self.points[0] += 10 if self.cards[-1][0] > 10 else self.cards[-1][0]
+            if self.noAce and self.cards[-1][0] == 1:
+                self.noAce = False
+            if not self.noAce:
+                self.points = [self.points[0]]
+                if self.points[0] + 10 < 22:
+                    self.points.append(self.points[0]+10)
 
 class Player(Base):
 
@@ -54,7 +53,6 @@ class Player(Base):
                 if len(self.points) > 1: # if soft hand and upper limit less than stopUntil hit regardless
                     self.hit(gameDeck)
                 elif round(random.uniform(0,1), 4) <= round((21-self.points[-1])/13,4):
-                    print("h")
                     self.hit(gameDeck)
                     self.linear_strat(gameDeck)
                 
@@ -72,7 +70,6 @@ class Player(Base):
                     else:
                         pass
 
-            
 
     def final(self,boss):
         self.points = [self.points[-1]]
@@ -123,50 +120,50 @@ def boomrate(players, boss):
     return boom/len(players)
 
 class Game():
-    def __init__(self, numOfDecks):
+
+    def __init__(self, numOfDecks, numOfPlayers):
         self.numOfDeck = numOfDecks
         self.deck = newdeck(numOfDecks)
-    def reshuffle(self):
-        self.deck = newdeck(self.numOfDeck)
-    def start(self,numOfPlayers):
-        if len(self.deck) < (numOfPlayers+1)*6:
-            self.reshuffle()
+        self.nOP = numOfPlayers
         self.players = dict()
         for i in range(1,numOfPlayers+1):
              self.players[f"Player {i}"] = Player()
         self.house = Dealer()
-        for t in self.players:
-            self.players[t].hit(self.deck)
+
+    def reshuffle(self):
+        self.deck = newdeck(self.numOfDeck)
+
+    def exportcards(self):
+        temp = "d"
+        for c in self.house.cards:
+            temp+= str(c[0])+c[1][:1]
+        for p in self.players:
+            temp+= p[:1]+p[-1]
+            for i in self.players[p].cards:
+                temp+= str(i[0])+i[1][:1]
+        return temp
+
+    def sim(self,aggre = 2):
+        if len(self.deck) < (len(self.players)+1)*5:
+            self.reshuffle()
+        for s in self.players:
+            self.players[s].hit(self.deck)
         self.house.hit(self.deck)
-        for t in self.players:
-            self.players[t].hit(self.deck)
-        
-        # for i in range(1,numOfPlayers+1):
-        #     self.players[f"Player {i}"].hit(deck)
-        # for p in self.players:
-        #     self.players[p].strat(coefficient,deck)
-        # self.house.finish(deck)
-        # self.updateStats()
+        for s2 in self.players:
+            self.players[s2].hit(self.deck)
 
-    def mid(self,aggre = 2):
-        for p in self.players:
-            self.players[p].linear_strat(self.deck)
-
-    def end(self):
+        for m in self.players:
+            self.players[m].linear_strat(self.deck) # make it so the streategy can be changed through config file
         self.house.finish(self.deck) # can adjust house rule i.e. soft/hard and value
-        for p in self.players:
-            self.players[p].final(self.house)
-        self.winrate = winrate(self.players, self.house)
-        self.boomrate = boomrate(self.players, self.house)
 
-    def getcards(self):
-        for p in self.players:
-            print(p,self.players[p].points,self.players[p].status,self.players[p].cards)
-        print("Boss",self.house.points,self.house.status,self.house.cards)
+        for e in self.players:
+            self.players[e].final(self.house)
 
+    def clean(self):
+        self.players = dict()
+        for i in range(1,self.nOP+1):
+             self.players[f"Player {i}"] = Player()
+        self.house = Dealer()
+        
+# diff player will have diff strategy
 
-# game as parent class and player and dealer as child class
-# gameclass will contain the statistics of the round
-# ace handling calculate minimum score then update aces if possible
-
-# graph for different players and different strategy

@@ -60,6 +60,11 @@ class Player(Base):
                 self.status = "lose"
             else:
                 self.status = "tie"
+    
+    # def getcards(self):
+    #     for p in self.players:
+    #         print(p,self.players[p].points,self.players[p].status,self.players[p].cards)
+    #     print("Boss",self.house.points,self.house.status,self.house.cards)
 
 class Dealer(Base):
     def __init__(self):
@@ -75,7 +80,9 @@ class Dealer(Base):
                 self.hit(deck)
 
 x = Player()
-y = [(1,"t"),(10,"6"),(1,"5"),(1,"t")]
+y = [(1,"Spade"),(10,"Spade"),(1,"Diamond"),(1,"Diamond")]
 for i in range (len(y)):
     x.hit(y)
     print(x.cards,x.points)
+
+# print(x.getcards())
