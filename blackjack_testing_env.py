@@ -10,27 +10,26 @@ def newdeck(x):
     random.shuffle(deck)
     return deck
 
-class test():
-    def __init__(self):
-         self.cards = []
+class Base():
 
-    def calpoints(self):
-            self.points = [0]
-            haveAce = False
-            for card in self.cards:
-                self.points[0] += 10 if card[0] > 10 else card[0]
-                if card[0] == 1:
-                     haveAce = True
-            if haveAce and self.points[0]+10 < 22:
-                self.points.append(self.points[0]+10)
+    def __init__(self):
+        self.cards = []
+        self.status = "live"
+        self.points = [0]
+        self.noAce = True
 
     def hit(self,deck):
         self.cards.append(deck.pop(0))
-        self.calpoints()
-        if self.points[0]>21:
-            self.status = "boom"
+        self.points[0] += 10 if self.cards[-1][0] > 10 else self.cards[-1][0]
+        if self.noAce and self.cards[-1][0] == 1:
+            self.noAce = False
+        if not self.noAce:
+            self.points = [self.points[0]]
+            if self.points[0] + 10 < 22:
+                self.points.append(self.points[0]+10)
+        
 
-class player(test):
+class Player(Base):
 
     def __init__(self):
         super().__init__()
@@ -62,7 +61,7 @@ class player(test):
             else:
                 self.status = "tie"
 
-class dealer(test):
+class Dealer(Base):
     def __init__(self):
         super().__init__()
     def finish(self,deck,value=17,hit_on_soft=True):
@@ -75,9 +74,8 @@ class dealer(test):
             while self.points[-1]<value:
                 self.hit(deck)
 
-x = player()
-y = [(1,"t"),(7,"6"),(1,"5"),(13,"t")]
-x.hit(y)
-print(x.cards,x.points)
-x.finish(y)
-print(x.cards,x.points)
+x = Player()
+y = [(1,"t"),(10,"6"),(1,"5"),(1,"t")]
+for i in range (len(y)):
+    x.hit(y)
+    print(x.cards,x.points)

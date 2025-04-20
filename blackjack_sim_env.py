@@ -1,0 +1,16 @@
+import blackjack
+
+temp = blackjack.Game(3)
+print(len(temp.deck))
+temp.start(3)
+temp.getcards()
+temp.mid()
+temp.end()
+temp.getcards()
+print("\n")
+temp.start(4)
+temp.getcards()
+temp.mid()
+temp.end()
+temp.getcards()
+print(len(temp.deck))

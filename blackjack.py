@@ -12,15 +12,15 @@ def newdeck(x):
     random.shuffle(deck)
     return deck
 
-class base():
+class Base():
 
     def __init__(self):
         self.cards = []
         self.status = "live"
+        self.points = [0]
+        self.haveAce = False
 
     def calpoints(self):
-            self.points = [0]
-            haveAce = False
             for card in self.cards:
                 self.points[0] += 10 if card[0] > 10 else card[0]
                 if card[0] == 1:
@@ -30,11 +30,15 @@ class base():
 
     def hit(self,deck):
         self.cards.append(deck.pop(0))
-        self.calpoints()
+        self.points[0] += 10 if self.cards[-1][0] > 10 else self.cards[-1][0]
+        if self.cards[-1][0] == 1 and self.points[0]+10 < 22:
+            self.points.append(self.points[0]+10)
+        if len(self.points) > 1 and self.points[-1]>21:
+            pass
         if self.points[0]>21:
             self.status = "boom"
 
-class Player(base):
+class Player(Base):
 
     def __init__(self):
         super().__init__()
@@ -86,7 +90,7 @@ class Player(base):
                 self.status = "tie"
 
 
-class Dealer(base):
+class Dealer(Base):
 
     def __init__(self):
         super().__init__()
@@ -166,19 +170,3 @@ class Game():
 # ace handling calculate minimum score then update aces if possible
 
 # graph for different players and different strategy
-
-
-temp = Game(3)
-print(len(temp.deck))
-temp.start(3)
-temp.getcards()
-temp.mid()
-temp.end()
-temp.getcards()
-print("\n")
-temp.start(4)
-temp.getcards()
-temp.mid()
-temp.end()
-temp.getcards()
-print(len(temp.deck))
