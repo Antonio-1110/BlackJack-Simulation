@@ -167,10 +167,9 @@ class Game():
             self.players[e].final(self.house)
 
     def reset(self):
-        self.players = dict()
-        for i in range(1,self.nOP+1):
-             self.players[f"Player {i}"] = Player()
-        self.house = Dealer()
+        for i in self.players:
+            self.players[i].clean()
+        self.house.clean()
         
 # diff player will have diff strategy
 
