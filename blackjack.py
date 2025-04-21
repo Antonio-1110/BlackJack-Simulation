@@ -1,5 +1,9 @@
 import random
 import math
+import json
+
+with open('config.json', 'r') as f:
+    config = json.load(f)
 
 def newdeck(x):
     deck = []
@@ -19,14 +23,6 @@ class Base():
         self.points = [0]
         self.noAce = True
 
-    def calpoints(self):
-            for card in self.cards:
-                self.points[0] += 10 if card[0] > 10 else card[0]
-                if card[0] == 1:
-                     haveAce = True
-            if haveAce and self.points[0]+10 < 22:
-                self.points.append(self.points[0]+10)
-
     def hit(self,deck):
             self.cards.append(deck.pop(0))
             self.points[0] += 10 if self.cards[-1][0] > 10 else self.cards[-1][0]
@@ -37,38 +33,52 @@ class Base():
                 if self.points[0] + 10 < 22:
                     self.points.append(self.points[0]+10)
 
+    def clean(self):
+        self.cards = []
+        self.status = "live"
+        self.points = [0]
+        self.noAce = True
+
 class Player(Base):
 
     def __init__(self):
         super().__init__()
 
-    def linear_strat(self, gameDeck, stopUntil = 16):
+    def linear_strat(self, gameDeck, stopAfter=16):
         if self.status == "live":
             if self.points[-1] < 12: #hit when less than 12
                 self.hit(gameDeck)
-                self.linear_strat(gameDeck)
-            elif self.points[-1] > stopUntil:
+                self.linear_strat(gameDeck, stopAfter)
+            elif self.points[-1] > stopAfter:
                 pass
             else:
                 if len(self.points) > 1: # if soft hand and upper limit less than stopUntil hit regardless
                     self.hit(gameDeck)
                 elif round(random.uniform(0,1), 4) <= round((21-self.points[-1])/13,4):
                     self.hit(gameDeck)
-                    self.linear_strat(gameDeck)
+                    self.linear_strat(gameDeck, stopAfter)
                 
-        def sigmoid_strat(self, gameDeck, house, ws, wh, stopUntil = 18):
-            c = 1/(1+math.e^(-ws*(-self.points[-1]+14.5+wh*(house-7))))
-            if self.status == "live":
-                if self.points[-1] < 12: #hit when less than 12
+    def sigmoid_strat(self, gameDeck, house, ws, wh, stopUntil = 18):
+        c = 1/(1+math.e^(-ws*(-self.points[-1]+14.5+wh*(house-7))))
+        if self.status == "live":
+            if self.points[-1] < 12: #hit when less than 12
+                self.hit(gameDeck)
+                self.sigmoid_strat(gameDeck)
+            elif self.points[-1] > stopUntil:
+                pass
+            else:
+                if len(self.points) > 1: # if soft hand and upper limit less than stopUntil hit regardless
                     self.hit(gameDeck)
-                    self.linear_strat(gameDeck)
-                elif self.points[-1] > stopUntil:
-                    pass
                 else:
-                    if len(self.points) > 1: # if soft hand and upper limit less than stopUntil hit regardless
-                        self.hit(gameDeck)
-                    else:
-                        pass
+                    pass
+        
+    def discrete_strat(self,gameDeck, value):
+        if self.points[-1] < value and self.status == "live":
+            self.hit(gameDeck)
+            self.discrete_strat(gameDeck, value)
+
+
+
 
 
     def final(self,boss):
@@ -92,15 +102,12 @@ class Dealer(Base):
     def __init__(self):
         super().__init__()
 
-    def finish(self,deck,value=17,hit_on_soft=True):
-        if hit_on_soft:
-            while len(self.points)>1 and self.points[-1]==value:
-                self.hit(deck)
-            while self.points[-1]<value:
-                self.hit(deck)
-        else:
-            while self.points[-1]<value:
-                self.hit(deck)
+    def finish(self,deck,hit_on_soft=True):
+        self.hit(deck)
+        while hit_on_soft and self.points[0] == 6 and self.points[-1]==17:
+            self.hit(deck)
+        while self.points[-1]<17:
+            self.hit(deck)
         self.points = [self.points[-1]]
 
 def winrate(players, boss):
@@ -154,12 +161,12 @@ class Game():
 
         for m in self.players:
             self.players[m].linear_strat(self.deck) # make it so the streategy can be changed through config file
-        self.house.finish(self.deck) # can adjust house rule i.e. soft/hard and value
+        self.house.finish(self.deck,config["Hit_on_Soft_17"])
 
         for e in self.players:
             self.players[e].final(self.house)
 
-    def clean(self):
+    def reset(self):
         self.players = dict()
         for i in range(1,self.nOP+1):
              self.players[f"Player {i}"] = Player()
