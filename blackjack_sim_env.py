@@ -18,6 +18,7 @@ if __name__ == "__main__":
         rd = [f"Round_{str(i)}",str(temp.house.points[-1])]
         for p in temp.players:
             rd.append(str(temp.players[p].points[-1]))
+            rd.append(temp.players[p].status)
         rd.append(temp.exportcards())
         data.append(rd)
         temp.reset()
@@ -26,8 +27,7 @@ if __name__ == "__main__":
 
     with open("Sim_rd:" + str(sim_rd) + "_NoP:" + str(NoP) + "_NoD:" + str(NoD), 'w') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['Rounds','Dealer'] + [f'Player_{str(i)}' for i in range(1,NoP+1)] + ['Card_Code'])
+        writer.writerow(['Rounds','Dealer'] + [f'P{i}' if j % 2 == 0 else f'P{i}_status' for i in range(1, NoP + 1) for j in range(2)] + ['Card_Code'])
         writer.writerows(data)
 
-# current table change to win or lose
 # output table for specific player's performance

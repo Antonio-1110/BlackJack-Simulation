@@ -32,6 +32,8 @@ class Base():
                 self.points = [self.points[0]]
                 if self.points[0] + 10 < 22:
                     self.points.append(self.points[0]+10)
+            if self.points[0] > 21:
+                self.status = "boom"
 
     def clean(self):
         self.cards = []
@@ -58,7 +60,7 @@ class Player(Base):
                     self.hit(gameDeck)
                     self.linear_strat(gameDeck, stopAfter)
                 
-    def sigmoid_strat(self, gameDeck, house, ws, wh, stopUntil = 18):
+    def sigmoid_strat(self, gameDeck, house, ws, wh, stopUntil=17):
         c = 1/(1+math.e^(-ws*(-self.points[-1]+14.5+wh*(house-7))))
         if self.status == "live":
             if self.points[-1] < 12: #hit when less than 12
@@ -69,16 +71,13 @@ class Player(Base):
             else:
                 if len(self.points) > 1: # if soft hand and upper limit less than stopUntil hit regardless
                     self.hit(gameDeck)
-                else:
-                    pass
+                elif round(random.uniform(0,1), 4) <= c:
+                    self.hit(gameDeck)
+                    self.sigmoid_strat(gameDeck)
         
     def discrete_strat(self,gameDeck, value):
-        if self.points[-1] < value and self.status == "live":
+        while self.points[-1] < value and self.status == "live":
             self.hit(gameDeck)
-            self.discrete_strat(gameDeck, value)
-
-
-
 
 
     def final(self,boss):
