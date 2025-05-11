@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     # exporting CSV
 
-    with open("Sim_rd:" + str(sim_rd) + "_NoP:" + str(NoP) + "_NoD:" + str(NoD), 'w') as csvfile:
+    with open("Sim_rd-" + str(sim_rd) + "_NoP-" + str(NoP) + "_NoD-" + str(NoD), "w+") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(['Rounds','Dealer'] + [f'P{i}' if j % 2 == 0 else f'P{i}_status' for i in range(1, NoP + 1) for j in range(2)] + ['Card_Code'])
         writer.writerows(data)
