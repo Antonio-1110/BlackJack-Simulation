@@ -2,19 +2,21 @@ from blackjack import Game
 import csv
 import json
 
-with open('config.json', 'r') as f:
-    config = json.load(f)
-sim_rd = config["Sim_rounds"]
-NoP = config["Number_of_Players"]
-NoD = config["Number_of_Decks"]
+def simulation():
 
-#Simulation
+    with open('config.json', 'r') as f:
+        config = json.load(f)
+    sim_rd = config["Sim_rounds"]
+    NoP = config["Number_of_Players"]
+    NoD = config["Number_of_Decks"]
 
-if __name__ == "__main__":
+    #Simulation
+
+
     data = []
     temp = Game(NoD,NoP)
     for i in range(1,sim_rd+1):
-        temp.sim()
+        temp.rdsim()
         rd = [f"Round_{str(i)}",str(temp.house.points[-1])]
         for p in temp.players:
             rd.append(str(temp.players[p].points[-1]))
@@ -25,9 +27,13 @@ if __name__ == "__main__":
 
     # exporting CSV
 
-    with open("Sim_rd-" + str(sim_rd) + "_NoP-" + str(NoP) + "_NoD-" + str(NoD), "w+") as csvfile:
+    with open("Sim_rd-" + str(sim_rd) + "_NoP-" + str(NoP) + "_NoD-" + str(NoD) + ".csv", "w+") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(['Rounds','Dealer'] + [f'P{i}' if j % 2 == 0 else f'P{i}_status' for i in range(1, NoP + 1) for j in range(2)] + ['Card_Code'])
         writer.writerows(data)
 
 # output table for specific player's performance
+
+
+if __name__ == '__main__' :
+    simulation()

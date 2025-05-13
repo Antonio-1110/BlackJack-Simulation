@@ -149,7 +149,7 @@ class Game():
                 temp+= str(i[0])+i[1][:1]
         return temp
 
-    def sim(self,aggre = 2):
+    def rdsim(self,aggre = 2):
         if len(self.deck) < (len(self.players)+1)*5:
             self.reshuffle()
         for s in self.players:

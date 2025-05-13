@@ -1,10 +1,6 @@
 {
-    "Number_of_Players" : 3,
-    "Number_of_Decks" : 3,
-    "Sim_rounds" : 100,
-    "Hit_on_Soft_17": true,
-    "lose": 0,
-    "win": 1,
-    "boom": 2,
-    "tie": 3
+    "Number_of_Players": 3,
+    "Number_of_Decks": 3,
+    "Sim_rounds": 1000,
+    "Hit_on_Soft_17": true
 }
