@@ -1,5 +1,9 @@
 from blackjack import Dealer, newdeck
 from statistics import mean
+import json
+
+with open("config.json", "r") as f:
+    config = json.load(f)
 
 data = dict()
 
@@ -11,7 +15,7 @@ for i in range(1,14):
     house = Dealer()
 
     for i in range(10000):
-        deck = newdeck(3)
+        deck = newdeck(config["Number_of_Decks"])
         deck.remove(dealer_uppercard)
         house.hit([dealer_uppercard])
         house.finish(deck)

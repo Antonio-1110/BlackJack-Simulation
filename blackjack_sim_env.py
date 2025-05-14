@@ -6,6 +6,7 @@ def simulation():
 
     with open('config.json', 'r') as f:
         config = json.load(f)
+        f.close()
     sim_rd = config["Sim_rounds"]
     NoP = config["Number_of_Players"]
     NoD = config["Number_of_Decks"]
@@ -31,6 +32,7 @@ def simulation():
         writer = csv.writer(csvfile)
         writer.writerow(['Rounds','Dealer'] + [f'P{i}' if j % 2 == 0 else f'P{i}_status' for i in range(1, NoP + 1) for j in range(2)] + ['Card_Code'])
         writer.writerows(data)
+        csvfile.close()
 
 # output table for specific player's performance
 

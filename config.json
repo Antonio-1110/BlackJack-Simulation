@@ -1,6 +1,6 @@
 {
-    "Number_of_Players": 4,
-    "Number_of_Decks": 6,
+    "Number_of_Players": 8,
+    "Number_of_Decks": 3,
     "Sim_rounds": 1000,
     "Hit_on_Soft_17": true
 }

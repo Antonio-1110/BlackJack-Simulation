@@ -33,7 +33,7 @@ class BlackjackConfigGUI(tk.Tk):
         self.num_decks_var = tk.StringVar(value=self.config_data.get('Number_of_Decks', 3))
         ttk.Entry(self, textvariable=self.num_decks_var).grid(row=0, column=1, padx=10, pady=10)
 
-        # Player Strategy
+        # Number of Players
         ttk.Label(self, text="Number of Players:").grid(row=1, column=0, padx=10, pady=10, sticky='w')
         self.num_player_var = tk.StringVar(value=self.config_data.get('Number_of_Players', 3))
         ttk.Entry(self, textvariable=self.num_player_var).grid(row=1, column=1, padx=10, pady=10)
@@ -69,26 +69,26 @@ class BlackjackConfigGUI(tk.Tk):
         self.config_data['Number_of_Decks'] = num_decks
         self.config_data['Sim_rounds'] = sim_rounds
         self.config_data['Number_of_Players'] = num_players
-        return True
+        try:
+            with open(CONFIG_FILE, 'w') as file:
+                json.dump(self.config_data, file, indent=4)
+                file.close()
+                return True
+        except IOError as e:
+                messagebox.showerror("Error", f"Failed to save configuration:\n{e}")
+                return False
     
     def save_config(self):
         if self.process():
-            try:
-                with open(CONFIG_FILE, 'w') as file:
-                    json.dump(self.config_data, file, indent=4)
-                messagebox.showinfo("Success", "Configuration saved successfully.")
-            except IOError as e:
-                messagebox.showerror("Error", f"Failed to save configuration:\n{e}")
+            messagebox.showinfo("Success", "Configuration saved successfully.")
 
     def run_simulation(self):
         if self.process():
             try:
-                with open(CONFIG_FILE, 'w') as file:
-                    json.dump(self.config_data, file, indent=4)
-                subprocess.run(['python3', 'blackjack_sim_env.py'], check=True)
-                messagebox.showinfo("Success", f"Simulated Game with {self.config_data["Sim_rounds"]} rounds, {self.config_data["Number_of_Players"]} players and {self.config_data["Number_of_Decks"]} decks")
-            except subprocess.CalledProcessError as e:
-                messagebox.showerror("Error", f"Simulation failed:\n{e}")
+                bjs.simulation()
+                messagebox.showinfo("Success", f"Simulated with {self.config_data["Sim_rounds"]} rounds, {self.config_data["Number_of_Players"]} players and {self.config_data["Number_of_Decks"]} decks")
+            except:
+                messagebox.showerror("Error", "Simulation failed:")
 
 if __name__ == "__main__":
     app = BlackjackConfigGUI()
