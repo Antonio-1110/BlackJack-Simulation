@@ -85,7 +85,7 @@ class BlackjackConfigGUI(tk.Tk):
             try:
                 with open(CONFIG_FILE, 'w') as file:
                     json.dump(self.config_data, file, indent=4)
-                subprocess.run(['python', 'blackjack_sim_env.py'], check=True)
+                subprocess.run(['python3', 'blackjack_sim_env.py'], check=True)
                 messagebox.showinfo("Success", f"Simulated Game with {self.config_data["Sim_rounds"]} rounds, {self.config_data["Number_of_Players"]} players and {self.config_data["Number_of_Decks"]} decks")
             except subprocess.CalledProcessError as e:
                 messagebox.showerror("Error", f"Simulation failed:\n{e}")
