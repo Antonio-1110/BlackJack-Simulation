@@ -1,17 +1,20 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
+import customtkinter as ctk
+from tkinter import messagebox
 import json
-import subprocess
 import blackjack_sim_env as bjs
 
 CONFIG_FILE = 'config.json'
 
-class BlackjackConfigGUI(tk.Tk):
+ctk.set_appearance_mode("Dark")
+
+class BlackjackConfigGUI(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Blackjack Simulation Configurator")
         self.geometry("400x250")
         self.resizable(False, False)
+        self.custom_font = ("Calibri", 16)
+        self.vardict = dict()
 
         self.config_data = self.load_config()
         self.create_widgets()
@@ -29,55 +32,49 @@ class BlackjackConfigGUI(tk.Tk):
 
     def create_widgets(self):
         # Number of Decks
-        ttk.Label(self, text="Number of Decks:").grid(row=0, column=0, padx=10, pady=10, sticky='w')
-        self.num_decks_var = tk.StringVar(value=self.config_data.get('Number_of_Decks', 3))
-        ttk.Entry(self, textvariable=self.num_decks_var).grid(row=0, column=1, padx=10, pady=10)
+        ctk.CTkLabel(self, text="Number of Decks:", font = self.custom_font).grid(row=0, column=0, padx=10, pady=10, sticky='w')
+        self.vardict['Number_of_Decks'] = ctk.StringVar(value=str(self.config_data.get('Number_of_Decks', 3)))
+        ctk.CTkEntry(self, textvariable=self.vardict['Number_of_Decks']).grid(row=0, column=1, padx=10, pady=10)
 
         # Number of Players
-        ttk.Label(self, text="Number of Players:").grid(row=1, column=0, padx=10, pady=10, sticky='w')
-        self.num_player_var = tk.StringVar(value=self.config_data.get('Number_of_Players', 3))
-        ttk.Entry(self, textvariable=self.num_player_var).grid(row=1, column=1, padx=10, pady=10)
+        ctk.CTkLabel(self, text="Number of Players:", font = self.custom_font).grid(row=1, column=0, padx=10, pady=10, sticky='w')
+        self.vardict['Number_of_Players'] = ctk.StringVar(value=str(self.config_data.get('Number_of_Players', 3)))
+        ctk.CTkEntry(self, textvariable=self.vardict['Number_of_Players']).grid(row=1, column=1, padx=10, pady=10)
 
         # Number of Simulations
-        ttk.Label(self, text="Simulated Rounds:").grid(row=2, column=0, padx=10, pady=10, sticky='w')
-        self.sim_rd_var = tk.StringVar(value=self.config_data.get('Sim_rounds', 1000))
-        ttk.Entry(self, textvariable=self.sim_rd_var).grid(row=2, column=1, padx=10, pady=10)
+        ctk.CTkLabel(self, text="Simulated Rounds:", font = self.custom_font).grid(row=2, column=0, padx=10, pady=10, sticky='w')
+        self.vardict['Simulated_rounds'] = ctk.StringVar(value=str(self.config_data.get('Simulated_rounds', 1000)))
+        ctk.CTkEntry(self, textvariable=self.vardict['Simulated_rounds']).grid(row=2, column=1, padx=10, pady=10)
+
+        #Strategy Selection
+        ctk.CTkLabel(self, text="Strategy Used:", font= self.custom_font).grid(row=3, column=0, padx =10, pady=10, sticky="w")
+        self.strategy_var = ctk.StringVar(value=str(self.config_data.get('Strategy', "Linear")))
+        ctk.CTkComboBox(self, values=["Linear", "Sigmoid", "Discrete"],variable=self.strategy_var).grid(row=3, column=1, padx=10, pady=10)
 
         # Save Button
-        ttk.Button(self, text="Save Config", command=self.save_config).grid(row=3, column=0, padx=10, pady=20)
+        ctk.CTkButton(self, text="Save Config", font = self.custom_font, command=self.save_config).grid(row=4, column=0, padx=10, pady=20)
 
         # Run Simulation Button
-        ttk.Button(self, text="Run Simulation", command=self.run_simulation).grid(row=3, column=1, padx=10, pady=20)
+        ctk.CTkButton(self, text="Run Simulation", font = self.custom_font, command=self.run_simulation).grid(row=4, column=1, padx=10, pady=20)
 
     def process(self):
-        try:
-            num_decks = int(self.num_decks_var.get())    
-        except ValueError:
-            messagebox.showerror("Invalid Input", "Please enter valid integers for Number of Decks.")
-            return False
-        try:
-            num_players = int(self.num_player_var.get())   
-        except ValueError:
-            messagebox.showerror("Invalid Input", "Please enter valid integers for Number of Players.")
-            return False
-        try:
-            sim_rounds = int(self.sim_rd_var.get())    
-        except ValueError:
-            messagebox.showerror("Invalid Input", "Please enter valid integers for Simulated Rounds.")
-            return False
-        
-        self.config_data['Number_of_Decks'] = num_decks
-        self.config_data['Sim_rounds'] = sim_rounds
-        self.config_data['Number_of_Players'] = num_players
+
+        for i in self.vardict:
+            try:
+                self.config_data[i] = int(self.vardict[i].get())
+            except ValueError:
+                messagebox.showerror("Error", f"Invalid Input ({self.vardict[i].get()})\n Please enter valid integers for {i.replace("_", " ")}")
+                return False
+            self.config_data["Strategy"] = str(self.strategy_var.get())
+
         try:
             with open(CONFIG_FILE, 'w') as file:
                 json.dump(self.config_data, file, indent=4)
-                file.close()
                 return True
         except IOError as e:
-                messagebox.showerror("Error", f"Failed to save configuration:\n{e}")
-                return False
-    
+            messagebox.showerror("Error", f"Failed to save configuration:\n{e}")
+            return False
+
     def save_config(self):
         if self.process():
             messagebox.showinfo("Success", "Configuration saved successfully.")
@@ -85,11 +82,18 @@ class BlackjackConfigGUI(tk.Tk):
     def run_simulation(self):
         if self.process():
             try:
-                bjs.simulation()
-                messagebox.showinfo("Success", f"Simulated with {self.config_data["Sim_rounds"]} rounds, {self.config_data["Number_of_Players"]} players and {self.config_data["Number_of_Decks"]} decks")
-            except:
-                messagebox.showerror("Error", "Simulation failed:")
+                if bjs.simulation():
+                    messagebox.showinfo(
+                        "Success",
+                        f"Simulated with {self.config_data['Simulated_rounds']} rounds, {self.config_data['Number_of_Players']} players and {self.config_data['Number_of_Decks']} decks using {self.config_data["Strategy"]} Strategy"
+                    )
+                else:
+                    messagebox.showerror("Error", "Simulation failed")
+            except Exception as e:
+                messagebox.showerror("Error", f"Simulation failed: {e}")
 
 if __name__ == "__main__":
+    ctk.set_appearance_mode("System")
+    ctk.set_default_color_theme("blue")
     app = BlackjackConfigGUI()
     app.mainloop()

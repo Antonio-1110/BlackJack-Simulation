@@ -1,6 +1,12 @@
 {
-    "Number_of_Players": 8,
+    "Number_of_Players": 5,
     "Number_of_Decks": 3,
-    "Sim_rounds": 1000,
-    "Hit_on_Soft_17": true
+    "Simulated_rounds": 1000,
+    "Hit_on_Soft_17": true,
+    "Folder_Name": "Simulations",
+    "Weight_self": 1,
+    "Weight_house": 1,
+    "Strategy": "Linear",
+    "StopAfter": true,
+    "value": 16
 }
