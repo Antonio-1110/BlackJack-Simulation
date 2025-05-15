@@ -4,8 +4,8 @@ import json
 import blackjack_sim_env as bjs
 
 CONFIG_FILE = 'config.json'
-
-ctk.set_appearance_mode("Dark")
+ctk.set_appearance_mode("System")
+ctk.set_default_color_theme("blue")
 
 class BlackjackConfigGUI(ctk.CTk):
     def __init__(self):
@@ -93,7 +93,5 @@ class BlackjackConfigGUI(ctk.CTk):
                 messagebox.showerror("Error", f"Simulation failed: {e}")
 
 if __name__ == "__main__":
-    ctk.set_appearance_mode("System")
-    ctk.set_default_color_theme("blue")
     app = BlackjackConfigGUI()
     app.mainloop()
