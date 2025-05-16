@@ -15,7 +15,7 @@ def simulation():
     #Simulation
 
     data = []
-    temp = Game(config["Number_of_Decks"],config["Number_of_Players"])
+    temp = Game()
     for i in range(1,config["Simulated_rounds"]+1):
         temp.rdsim(stratdict[config["Strategy"]])
         rd = [f"Round_{str(i)}",str(temp.house.points[-1])]

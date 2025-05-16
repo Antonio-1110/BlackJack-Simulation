@@ -1,6 +1,7 @@
 import random
 import math
 import json
+import dealer_bust_rate as dbr
 
 with open('config.json', 'r') as f:
     config = json.load(f)
@@ -62,7 +63,7 @@ class Player(Base):
                     self.linear_strat(gameDeck, config["value"])
                 
     def sigmoid_strat(self, gameDeck, house):
-        c = 1/(1+math.e ** (-config["Weight_self"]*(-self.points[-1]+14.5+config["Weight_house"]*(house-7)))) #not minus seven
+        c = 1/(1+math.exp(-config["Weight_self"]*(-self.points[-1]+14.5+config["Weight_house"]*(house-7)))) #not minus seven
         if self.status == "live":
             if self.points[-1] < 12: #hit when less than 12
                 self.hit(gameDeck)
@@ -112,17 +113,12 @@ class Dealer(Base):
 
 class Game():
 
-    def __init__(self, numOfDecks, numOfPlayers):
-        self.numOfDeck = numOfDecks
-        self.deck = newdeck(numOfDecks)
-        self.nOP = numOfPlayers
+    def __init__(self):
+        self.deck = newdeck(config["Number_of_Decks"])
         self.players = dict()
-        for i in range(1,numOfPlayers+1):
+        for i in range(1,config["Number_of_Players"]+1):
              self.players[f"Player {i}"] = Player()
         self.house = Dealer()
-
-    def reshuffle(self):
-        self.deck = newdeck(self.numOfDeck)
 
     def exportcards(self):
         temp = "d"
@@ -135,8 +131,8 @@ class Game():
         return temp
 
     def rdsim(self,func, aggre = 2):
-        if len(self.deck) < (len(self.players)+1)*5:
-            self.reshuffle()
+        if len(self.deck) < (config["Number_of_Decks"]*4*config["Penetration_of_deck"]): #reshuffle when
+            self.deck = newdeck(config["Number_of_Decks"])
         for s in self.players:
             self.players[s].hit(self.deck)
         self.house.hit(self.deck)

@@ -1,5 +1,5 @@
 {
-    "Number_of_Players": 5,
+    "Number_of_Players": 4,
     "Number_of_Decks": 3,
     "Simulated_rounds": 1000,
     "Hit_on_Soft_17": true,
@@ -7,6 +7,7 @@
     "Weight_self": 1,
     "Weight_house": 1,
     "Strategy": "Linear",
-    "StopAfter": true,
-    "value": 16
+    "Hardstop": true,
+    "value": 16,
+    "Penetration_of_deck":0.5
 }
