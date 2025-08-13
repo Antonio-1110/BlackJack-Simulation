@@ -53,7 +53,7 @@ class Player(Base):
             if self.points[-1] < 12: #hit when less than 12
                 self.hit(gameDeck)
                 self.linear_strat(gameDeck, config["value"])
-            elif self.points[-1] > config["value"] and config["StopAfter"]:
+            elif self.points[-1] > config["value"] and config["Hardstop"]:
                 pass
             else:
                 if len(self.points) > 1: # if soft hand and upper limit less than stopUntil hit regardless
@@ -68,7 +68,7 @@ class Player(Base):
             if self.points[-1] < 12: #hit when less than 12
                 self.hit(gameDeck)
                 self.sigmoid_strat(gameDeck, house)
-            elif self.points[-1] > config["value"] and config["StopAfter"]:
+            elif self.points[-1] > config["value"] and config["Hardstop"]:
                 pass
             else:
                 if len(self.points) > 1: # if soft hand and upper limit less than stopUntil hit regardless
@@ -131,7 +131,7 @@ class Game():
         return temp
 
     def rdsim(self,func, aggre = 2):
-        if len(self.deck) < (config["Number_of_Decks"]*4*config["Penetration_of_deck"]): #reshuffle when
+        if len(self.deck) < (config["Number_of_Decks"]*4*52*config["Penetration_of_deck"]): #reshuffle when
             self.deck = newdeck(config["Number_of_Decks"])
         for s in self.players:
             self.players[s].hit(self.deck)

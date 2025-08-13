@@ -7,7 +7,7 @@
     "Weight_self": 1,
     "Weight_house": 1,
     "Strategy": "Linear",
-    "Hardstop": true,
     "value": 16,
-    "Penetration_of_deck":0.5
+    "Penetration_of_deck": 0.7,
+    "Hardstop": true
 }
