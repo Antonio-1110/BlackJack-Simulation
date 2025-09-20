@@ -26,7 +26,7 @@ class Base():
         self.noAce = True
 
     def hit(self,deck):
-            self.cards.append(deck.pop(0))
+            self.cards.append(deck.pop())
             self.points[0] += 10 if self.cards[-1][0] > 10 else self.cards[-1][0]
             if self.noAce and self.cards[-1][0] == 1:
                 self.noAce = False
@@ -105,7 +105,7 @@ class Dealer(Base):
 
     def finish(self,deck,hit_on_soft=True):
         self.hit(deck)
-        while hit_on_soft and self.points[0] == 6 and self.points[-1]==17:
+        while hit_on_soft and self.points[0] == 7 and self.points[-1]==17:
             self.hit(deck)
         while self.points[-1]<17:
             self.hit(deck)
@@ -131,7 +131,7 @@ class Game():
         return temp
 
     def rdsim(self,func, aggre = 2):
-        if len(self.deck) < (config["Number_of_Decks"]*4*52*config["Penetration_of_deck"]): #reshuffle when
+        if len(self.deck) < (config["Number_of_Decks"]*52*(1-config["Penetration_of_deck"])): #reshuffle 
             self.deck = newdeck(config["Number_of_Decks"])
         for s in self.players:
             self.players[s].hit(self.deck)
@@ -140,7 +140,7 @@ class Game():
             self.players[s2].hit(self.deck)
 
         for m in self.players:
-            func(self.players[m],self.deck,self.house.points[-1]) # make it so the streategy can be changed through config file
+            func(self.players[m],self.deck,self.house.points[0]) # make it so the streategy can be changed through config file
         self.house.finish(self.deck,config["Hit_on_Soft_17"])
 
         for e in self.players:
