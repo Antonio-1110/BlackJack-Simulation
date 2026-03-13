@@ -17,16 +17,18 @@ blackjack_sim/
 
 
 The "Strategy-to-Player" Factory
+
+```python
 class StrategyFactory:
     _mapping = {
         "basic": BasicStrategy,
         "aggressive": AggressiveStrategy,
         "counter": CardCounter
     }
-
     @staticmethod
     def create(name):
         return StrategyFactory._mapping[name.lower()]()
+```
 
 
 Simulation Flow
