@@ -1,0 +1,145 @@
+{
+  "rules": {
+    "num_decks": 6,
+    "penetration": 0.75,
+    "dealer_hits_soft_17": false,
+    "dealer_peeks": true,
+    "blackjack_payout": 1.5,
+    "double_on": "any",
+    "double_after_split": true,
+    "max_split_hands": 4,
+    "resplit_aces": false,
+    "hit_split_aces": false,
+    "surrender": "none",
+    "table_min": 10,
+    "table_max": 1000
+  },
+  "session": {
+    "rounds": 1000,
+    "sessions": 1000,
+    "bankroll": 1000,
+    "stop_loss": 0,
+    "win_target": 0,
+    "other_players": 0,
+    "seed": 12345
+  },
+  "candidates": [
+    {
+      "name": "Flat",
+      "play": {
+        "type": "basic",
+        "params": {}
+      },
+      "bet": {
+        "type": "flat",
+        "params": {
+          "unit": 10,
+          "units": 1
+        }
+      }
+    },
+    {
+      "name": "Martingale",
+      "play": {
+        "type": "basic",
+        "params": {}
+      },
+      "bet": {
+        "type": "martingale",
+        "params": {
+          "unit": 10,
+          "multiplier": 2,
+          "max_steps": 0
+        }
+      }
+    },
+    {
+      "name": "Paroli",
+      "play": {
+        "type": "basic",
+        "params": {}
+      },
+      "bet": {
+        "type": "paroli",
+        "params": {
+          "unit": 10,
+          "multiplier": 2,
+          "streak_target": 3
+        }
+      }
+    },
+    {
+      "name": "D'Alembert",
+      "play": {
+        "type": "basic",
+        "params": {}
+      },
+      "bet": {
+        "type": "dalembert",
+        "params": {
+          "unit": 10,
+          "step_units": 1
+        }
+      }
+    },
+    {
+      "name": "Fibonacci",
+      "play": {
+        "type": "basic",
+        "params": {}
+      },
+      "bet": {
+        "type": "fibonacci",
+        "params": {
+          "unit": 10,
+          "max_index": 20
+        }
+      }
+    },
+    {
+      "name": "1-3-2-6",
+      "play": {
+        "type": "basic",
+        "params": {}
+      },
+      "bet": {
+        "type": "sequence",
+        "params": {
+          "unit": 10,
+          "sequence": "1-3-2-6",
+          "advance_on": "win"
+        }
+      }
+    },
+    {
+      "name": "Random vol 0.5",
+      "play": {
+        "type": "basic",
+        "params": {}
+      },
+      "bet": {
+        "type": "random",
+        "params": {
+          "unit": 10,
+          "mean_units": 1,
+          "volatility": 0.5
+        }
+      }
+    },
+    {
+      "name": "Random vol 1.0",
+      "play": {
+        "type": "basic",
+        "params": {}
+      },
+      "bet": {
+        "type": "random",
+        "params": {
+          "unit": 10,
+          "mean_units": 1,
+          "volatility": 1.0
+        }
+      }
+    }
+  ]
+}

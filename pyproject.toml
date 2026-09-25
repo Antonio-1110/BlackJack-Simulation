@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blackjack-sim"
+version = "0.2.0"
+description = "Blackjack engine, strategy library and Monte Carlo suite for comparing play and bet-sizing strategies"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "pandas>=2.0"]
+
+[project.optional-dependencies]
+app = ["streamlit>=1.40", "altair>=5.0"]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+blackjack-sim = "blackjack_sim.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["blackjack_sim*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
