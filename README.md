@@ -23,7 +23,8 @@ python -m pytest                       # tests
 8. [Configuring experiments and table rules](#8-configuring-experiments-and-table-rules)
 9. [Reading the results](#9-reading-the-results)
 10. [Project layout](#10-project-layout)
-11. [Validation, history, and the road to Gymnasium](#11-validation-history-and-the-road-to-gymnasium)
+11. [Validation and history](#11-validation-and-history)
+12. [Reinforcement learning: the Gymnasium environment](#12-reinforcement-learning-the-gymnasium-environment)
 
 ---
 
@@ -551,6 +552,9 @@ blackjack_sim/
 │   ├── betting/progressions.py  # flat, Martingale, Paroli, D'Alembert, Fibonacci,
 │   │                            # Oscar's Grind, 1-3-2-6, random volatility, proportional
 │   └── betting/counting.py      # true-count bet spread (with optional Wonging)
+├── rl/                     # Gymnasium env (optional dependency)
+│   ├── env.py              # BlackjackEnv: one round per episode, action masks
+│   └── agents.py           # random, basic-strategy and tabular Monte Carlo agents
 ├── simulation/
 │   ├── config.py           # ExperimentConfig <-> JSON
 │   ├── session.py          # one player + bankroll over N rounds
@@ -560,7 +564,8 @@ blackjack_sim/
 └── __main__.py             # CLI
 app/streamlit_app.py        # frontend
 configs/*.json              # example experiments: progressions, counting, play strategies
-tests/                      # engine, strategy, simulation and README-example tests
+scripts/rl_vs_basic.py      # train a tabular agent and compare it with basic strategy
+tests/                      # engine, strategy, simulation, RL env and README-example tests
 ```
 
 Each layer only depends on the one above it. The engine never imports a strategy,
@@ -568,7 +573,7 @@ and strategies never touch files or the UI.
 
 ---
 
-## 11. Validation, history, and the road to Gymnasium
+## 11. Validation and history
 
 **Validation.** The engine reproduces published results:
 
@@ -588,8 +593,49 @@ and strategies never touch files or the UI.
 The Linear, Sigmoid and Discrete strategies live on as `linear`, `sigmoid` and
 `threshold`.
 
-**Gymnasium.** `Table.play_round()` is a generator that yields a `Decision` and
-receives an `Action`. That's the same information a play strategy gets, which makes
-it a natural observation/action interface for a Gymnasium environment. `reset()`
-starts a round, `step(action)` sends the action, and the round's net result is the
-reward. No engine changes are needed.
+## 12. Reinforcement learning: the Gymnasium environment
+
+`blackjack_sim.rl.BlackjackEnv` wraps the round engine as a
+[Gymnasium](https://gymnasium.farama.org/) environment. It needs the optional
+dependency: `pip install -e ".[rl]"`. Importing `blackjack_sim.rl` also registers
+it as `BlackjackSim-v0` for `gymnasium.make`.
+
+| | |
+|---|---|
+| Episode | one round at a single-seat table; the shoe carries over between episodes and is only reshuffled at the cut card |
+| Observation | `Dict`: `player_total`, `soft`, `pair`, `dealer_upcard` (1 = Ace), `num_cards`, `num_hands`, `insurance` (is this an insurance decision), `true_count`; plus `seen` (cards of each value seen since the shuffle) with `shoe_composition=True` |
+| Action | `Discrete(5)`: stand, hit, double, split, surrender (`env.actions` has the order). With `offer_insurance=True` it is `Discrete(7)` with insurance / no insurance; otherwise insurance is always declined |
+| Legal actions | `env.action_masks()` and `info["action_mask"]`, built from the engine's `decision.legal` (the hook `sb3-contrib`'s `MaskablePPO` looks for) |
+| Reward | 0 until the round ends, then the round's net result in units of the initial bet: +1 win, +1.5 blackjack, −2 lost double, −0.5 surrender. Mean episode return is the edge |
+
+Rounds that end without a choice (a natural, a dealer blackjack) are still an
+episode, a single step where only stand is legal and `info["auto"]` is set on
+reset, so average returns stay equal to the true edge. An illegal action never
+raises: it is played as stand (no insurance for an insurance decision),
+`info["illegal_action"]` is set and `illegal_action_penalty` (default 0) is
+subtracted. The env passes `gymnasium.utils.env_checker.check_env`, and a seed
+passed to `reset(seed=...)` reproduces the whole shoe.
+
+```python
+from blackjack_sim.rl import BasicStrategyAgent, BlackjackEnv, RandomAgent, evaluate
+
+env = BlackjackEnv(rules={"surrender": "late"})
+obs, info = env.reset(seed=0)
+print(obs["player_total"], obs["dealer_upcard"], info["action_mask"])
+
+print("basic strategy", evaluate(BasicStrategyAgent(env), env, 2_000, seed=1))
+print("random legal  ", evaluate(RandomAgent(0), env, 2_000, seed=1))
+```
+
+`scripts/rl_vs_basic.py` trains a tabular Monte Carlo agent on the env and
+compares it with basic strategy and a random agent. With the defaults (500k
+training rounds) the learned agent agrees with the chart on about 89% of
+decisions and loses about 2.6% per round against basic strategy's 0.4 to 0.8%;
+more training rounds close the gap.
+
+```bash
+python scripts/rl_vs_basic.py --train 2000000 --eval 500000
+```
+
+Still open from the roadmap: a bet-sizing env, and an adapter that runs a
+trained policy as a `PlayStrategy` inside the experiment suite.
