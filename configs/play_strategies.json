@@ -1,0 +1,97 @@
+{
+  "rules": {
+    "num_decks": 6,
+    "penetration": 0.75,
+    "dealer_hits_soft_17": false,
+    "dealer_peeks": true,
+    "blackjack_payout": 1.5,
+    "double_on": "any",
+    "double_after_split": true,
+    "max_split_hands": 4,
+    "resplit_aces": false,
+    "hit_split_aces": false,
+    "surrender": "none",
+    "table_min": 10,
+    "table_max": 1000
+  },
+  "session": {
+    "rounds": 1000,
+    "sessions": 500,
+    "bankroll": 1000,
+    "stop_loss": 0,
+    "win_target": 0,
+    "other_players": 0,
+    "seed": 7
+  },
+  "candidates": [
+    {
+      "name": "Basic strategy",
+      "play": {
+        "type": "basic",
+        "params": {}
+      },
+      "bet": {
+        "type": "flat",
+        "params": {
+          "unit": 10
+        }
+      }
+    },
+    {
+      "name": "Mimic dealer",
+      "play": {
+        "type": "mimic_dealer",
+        "params": {}
+      },
+      "bet": {
+        "type": "flat",
+        "params": {
+          "unit": 10
+        }
+      }
+    },
+    {
+      "name": "Stand on 16 (Discrete)",
+      "play": {
+        "type": "threshold",
+        "params": {
+          "stand_on": 16
+        }
+      },
+      "bet": {
+        "type": "flat",
+        "params": {
+          "unit": 10
+        }
+      }
+    },
+    {
+      "name": "Linear (legacy)",
+      "play": {
+        "type": "linear",
+        "params": {
+          "stand_above": 16
+        }
+      },
+      "bet": {
+        "type": "flat",
+        "params": {
+          "unit": 10
+        }
+      }
+    },
+    {
+      "name": "Sigmoid (legacy)",
+      "play": {
+        "type": "sigmoid",
+        "params": {}
+      },
+      "bet": {
+        "type": "flat",
+        "params": {
+          "unit": 10
+        }
+      }
+    }
+  ]
+}

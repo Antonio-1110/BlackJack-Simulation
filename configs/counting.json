@@ -1,0 +1,95 @@
+{
+  "rules": {
+    "num_decks": 6,
+    "penetration": 0.75,
+    "dealer_hits_soft_17": true,
+    "dealer_peeks": true,
+    "blackjack_payout": 1.5,
+    "double_on": "any",
+    "double_after_split": true,
+    "max_split_hands": 4,
+    "resplit_aces": false,
+    "hit_split_aces": false,
+    "surrender": "late",
+    "table_min": 10,
+    "table_max": 1000
+  },
+  "session": {
+    "rounds": 2000,
+    "sessions": 500,
+    "bankroll": 10000,
+    "stop_loss": 0,
+    "win_target": 0,
+    "other_players": 2,
+    "seed": 2024
+  },
+  "candidates": [
+    {
+      "name": "Flat basic",
+      "play": {
+        "type": "basic",
+        "params": {}
+      },
+      "bet": {
+        "type": "flat",
+        "params": {
+          "unit": 10,
+          "units": 1
+        }
+      }
+    },
+    {
+      "name": "Hi-Lo 1-8",
+      "play": {
+        "type": "basic",
+        "params": {}
+      },
+      "bet": {
+        "type": "count_spread",
+        "params": {
+          "unit": 10,
+          "system": "hi_lo",
+          "min_units": 1,
+          "max_units": 8,
+          "tc_start": 1,
+          "ramp": 2
+        }
+      }
+    },
+    {
+      "name": "Hi-Lo 1-12 + I18",
+      "play": {
+        "type": "basic",
+        "params": {
+          "deviations": true
+        }
+      },
+      "bet": {
+        "type": "count_spread",
+        "params": {
+          "unit": 10,
+          "system": "hi_lo",
+          "min_units": 1,
+          "max_units": 12,
+          "tc_start": 1,
+          "ramp": 2
+        }
+      }
+    },
+    {
+      "name": "Random vol (same avg bet)",
+      "play": {
+        "type": "basic",
+        "params": {}
+      },
+      "bet": {
+        "type": "random",
+        "params": {
+          "unit": 10,
+          "mean_units": 2,
+          "volatility": 0.8
+        }
+      }
+    }
+  ]
+}
