@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blackjack Strategy Lab</title>
+  <meta name="description" content="Write a blackjack strategy in Python, set the table rules, and simulate it in your browser.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.20/lib/codemirror.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.20/lib/codemirror.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.20/mode/python/python.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Blackjack Strategy Lab</h1>
+      <p class="sub">Write a strategy in Python, set up the table, and hit Run. Everything runs in your browser.</p>
+    </div>
+    <div class="engine" id="engine-status" role="status">Loading Python…</div>
+  </header>
+
+  <main class="layout">
+    <section class="panel editor-panel" aria-labelledby="code-h">
+      <div class="panel-head">
+        <h2 id="code-h">Your strategy</h2>
+        <div class="row">
+          <label class="inline" for="example">Start from</label>
+          <select id="example"></select>
+        </div>
+      </div>
+      <div id="editor"></div>
+      <p class="hint">Define a class that extends <code>PlayStrategy</code> or <code>BasicStrategy</code> (how you play a hand)
+        and/or <code>BetStrategy</code> (how much you bet). Leave one out and it falls back to basic strategy or a flat
+        table-minimum bet. See the <a href="https://github.com/Antonio-1110/BlackJack-Simulation#2-designing-a-play-strategy" target="_blank" rel="noopener">strategy guide</a>.</p>
+    </section>
+
+    <section class="panel settings-panel" aria-labelledby="settings-h">
+      <h2 id="settings-h" class="visually-hidden">Settings</h2>
+      <form id="settings" novalidate>
+        <fieldset>
+          <legend>Table</legend>
+          <div class="field">
+            <label for="players">Players at the table <output id="players-out"></output></label>
+            <input type="range" id="players" min="1" max="7" value="1">
+            <small>You plus other players using basic strategy. More players use up the shoe faster.</small>
+          </div>
+          <div class="field">
+            <label for="num_decks">Decks in the shoe <output id="num_decks-out"></output></label>
+            <input type="range" id="num_decks" min="1" max="8" value="6">
+          </div>
+          <div class="field">
+            <label for="penetration">Deck penetration <output id="penetration-out"></output></label>
+            <input type="range" id="penetration" min="0.5" max="0.95" step="0.05" value="0.75">
+            <small>How much of the shoe is dealt before the reshuffle.</small>
+          </div>
+          <div class="field">
+            <span class="label" id="s17-l">Dealer on soft 17</span>
+            <div class="seg" role="radiogroup" aria-labelledby="s17-l">
+              <label><input type="radio" name="dealer_hits_soft_17" value="false" checked><span>Stands</span></label>
+              <label><input type="radio" name="dealer_hits_soft_17" value="true"><span>Hits</span></label>
+            </div>
+          </div>
+          <div class="field check">
+            <label><input type="checkbox" id="insurance" checked> Insurance offered</label>
+          </div>
+          <details>
+            <summary>More house rules</summary>
+            <div class="field">
+              <label for="blackjack_payout">Blackjack pays</label>
+              <select id="blackjack_payout">
+                <option value="1.5" selected>3:2</option>
+                <option value="1.2">6:5</option>
+                <option value="1">1:1</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="double_on">Double down on</label>
+              <select id="double_on">
+                <option value="any" selected>Any two cards</option>
+                <option value="9-11">9, 10 or 11</option>
+                <option value="10-11">10 or 11</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="surrender">Surrender</label>
+              <select id="surrender">
+                <option value="none" selected>Not allowed</option>
+                <option value="late">Late surrender</option>
+              </select>
+            </div>
+            <div class="field check"><label><input type="checkbox" id="double_after_split" checked> Double after split</label></div>
+            <div class="field check"><label><input type="checkbox" id="resplit_aces"> Re-split aces</label></div>
+            <div class="field check"><label><input type="checkbox" id="dealer_peeks" checked> Dealer peeks for blackjack</label></div>
+            <div class="grid2">
+              <div class="field"><label for="table_min">Table minimum</label><input type="number" id="table_min" min="1" value="10"></div>
+              <div class="field"><label for="table_max">Table maximum</label><input type="number" id="table_max" min="1" value="1000"></div>
+            </div>
+          </details>
+        </fieldset>
+
+        <fieldset>
+          <legend>Simulation</legend>
+          <div class="grid2">
+            <div class="field"><label for="rounds">Rounds per session</label><input type="number" id="rounds" min="1" max="100000" value="1000"></div>
+            <div class="field"><label for="sessions">Sessions</label><input type="number" id="sessions" min="1" max="10000" value="50"></div>
+            <div class="field"><label for="bankroll">Starting bankroll</label><input type="number" id="bankroll" min="1" value="1000"></div>
+            <div class="field"><label for="seed">Random seed</label><input type="number" id="seed" value="12345"></div>
+            <div class="field"><label for="stop_loss">Stop after losing</label><input type="number" id="stop_loss" min="0" value="0" placeholder="0 = off"></div>
+            <div class="field"><label for="win_target">Stop after winning</label><input type="number" id="win_target" min="0" value="0" placeholder="0 = off"></div>
+          </div>
+          <small>Each session is one sitting with a fresh bankroll. More sessions give steadier averages.</small>
+          <div class="field check"><label><input type="checkbox" id="compare" checked> Compare with basic strategy and a flat bet</label></div>
+        </fieldset>
+
+        <div class="run-row">
+          <button type="submit" id="run" class="primary" disabled>Hit Run</button>
+          <button type="button" id="stop" hidden>Stop</button>
+        </div>
+        <div class="progress" id="progress" hidden><div class="bar" id="progress-bar"></div></div>
+        <p class="progress-text" id="progress-text" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="results" id="results" aria-labelledby="results-h" hidden>
+      <h2 id="results-h">Results</h2>
+      <pre class="error" id="error" hidden></pre>
+      <div id="result-body">
+        <p class="used" id="used"></p>
+        <div class="tiles" id="tiles"></div>
+
+        <div class="panel chart-card">
+          <div class="panel-head">
+            <h3>Bankroll over the session</h3>
+            <label class="inline"><input type="checkbox" id="show-samples"> Show 10 individual sessions</label>
+          </div>
+          <p class="chart-sub">The line is the median session; the shaded bands hold the middle 50% and 90% of sessions.</p>
+          <div class="chart-box"><canvas id="bankroll-chart" aria-label="Bankroll by round" role="img"></canvas></div>
+        </div>
+
+        <div class="panel chart-card">
+          <h3>Profit at the end of each session</h3>
+          <p class="chart-sub">How your sessions ended, grouped into ranges.</p>
+          <div class="chart-box short"><canvas id="profit-chart" aria-label="Distribution of session profit" role="img"></canvas></div>
+        </div>
+
+        <details class="panel">
+          <summary><h3 class="inline-h">All the numbers</h3></summary>
+          <div class="table-wrap"><table id="stats-table"></table></div>
+        </details>
+
+        <details class="panel">
+          <summary><h3 class="inline-h">Hand-by-hand log of your first session</h3></summary>
+          <div class="table-wrap"><table id="log-table"></table></div>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>Built on the <a href="https://github.com/Antonio-1110/BlackJack-Simulation" target="_blank" rel="noopener">BlackJack-Simulation</a> engine.
+      Your code runs only in this browser tab, through <a href="https://pyodide.org" target="_blank" rel="noopener">Pyodide</a>.</p>
+  </footer>
+
+  <script src="examples.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
