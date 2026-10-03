@@ -5,6 +5,9 @@ play a hand) and **bet-sizing strategies** (how much you bet each round), with a
 Streamlit frontend for configuring and comparing them, and a browser **Strategy Lab**
 where you type a strategy in Python and hit Run (see [§13](#13-the-browser-strategy-lab)).
 
+**Try the Strategy Lab online:** <https://antonio-1110.github.io/BlackJack-Simulation/>
+(nothing to install; it runs in your browser).
+
 ```bash
 pip install -r requirements.txt        # or: pip install -e ".[app,dev]"
 streamlit run app/streamlit_app.py     # the frontend
@@ -650,6 +653,8 @@ trained policy as a `PlayStrategy` inside the experiment suite.
 
 ## 13. The browser Strategy Lab
 
+**Live at <https://antonio-1110.github.io/BlackJack-Simulation/>.**
+
 `web/` is a static page where you write a strategy in a code editor, set the table
 (players, decks, penetration, soft 17, insurance and the other house rules) and the
 simulation (rounds, sessions, bankroll, stop loss, win target), then hit **Run** to see
@@ -665,15 +670,17 @@ them. If you define several of one kind, pick one with `PLAY = MyClass` or
 `BET = MyClass`. `blackjack_sim/playground.py` is the glue; it only uses the
 pure-Python parts of the package, so the page doesn't download numpy.
 
+To run your own copy locally, for example while changing the page or the engine:
+
 ```bash
 python scripts/build_web.py              # writes build/web/ (the page + blackjack_sim.zip)
 python -m http.server -d build/web       # open http://localhost:8000
 ```
 
 **Publishing.** `.github/workflows/pages.yml` builds the same folder and deploys it to
-GitHub Pages on every push to `main`, at
-`https://antonio-1110.github.io/BlackJack-Simulation/`. It needs one setting, once:
-*Settings → Pages → Build and deployment → Source: GitHub Actions*.
+the live site on every push to `main`, so a merged change shows up there a minute or
+two later. The repository's Pages source must stay on *GitHub Actions* (Settings →
+Pages → Build and deployment); a fork needs that setting once to publish its own copy.
 
 Pyodide runs the simulator roughly three to four times slower than regular Python,
 so 50 sessions of 1,000 rounds (plus the baseline) takes several seconds. The
