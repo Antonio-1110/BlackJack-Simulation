@@ -7,12 +7,16 @@ import os
 import time
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
-from typing import Any, Callable
-
-import numpy as np
+from typing import TYPE_CHECKING, Any, Callable
 
 from .config import Candidate, ExperimentConfig
 from .session import SessionResult, run_session
+
+if TYPE_CHECKING:
+    import numpy as np
+
+# numpy is imported inside the functions that need it, so the engine and
+# single sessions also run where numpy isn't available (the browser playground).
 
 ProgressFn = Callable[[int, int], None]
 
@@ -30,6 +34,8 @@ class CandidateResult:
     def paths(self, rounds: int | None = None) -> np.ndarray:
         """Bankroll paths as a (sessions, rounds + 1) array. Sessions that
         stopped early are padded with their final bankroll."""
+        import numpy as np
+
         n = rounds if rounds is not None else max(s.rounds for s in self.sessions)
         out = np.empty((len(self.sessions), n + 1))
         for i, s in enumerate(self.sessions):
@@ -39,6 +45,8 @@ class CandidateResult:
         return out
 
     def column(self, attr: str) -> np.ndarray:
+        import numpy as np
+
         return np.array([getattr(s, attr) for s in self.sessions], dtype=float)
 
 
@@ -87,6 +95,8 @@ SUMMARY_COLUMNS: dict[str, str] = {
 
 
 def summarize(sessions: list[SessionResult]) -> dict[str, float]:
+    import numpy as np
+
     net = np.array([s.net for s in sessions])
     bets = np.array([s.initial_bet_total for s in sessions])
     hands = np.array([s.hands for s in sessions], dtype=float)

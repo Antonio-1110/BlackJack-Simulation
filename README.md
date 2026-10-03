@@ -2,13 +2,15 @@
 
 A blackjack engine plus a Monte Carlo suite for testing **play strategies** (how you
 play a hand) and **bet-sizing strategies** (how much you bet each round), with a
-Streamlit frontend for configuring and comparing them.
+Streamlit frontend for configuring and comparing them, and a browser **Strategy Lab**
+where you type a strategy in Python and hit Run (see [§13](#13-the-browser-strategy-lab)).
 
 ```bash
 pip install -r requirements.txt        # or: pip install -e ".[app,dev]"
 streamlit run app/streamlit_app.py     # the frontend
 python -m blackjack_sim run configs/progressions.json   # the same from the CLI
 python -m pytest                       # tests
+python scripts/build_web.py && python -m http.server -d build/web   # the Strategy Lab
 ```
 
 **Contents**
@@ -25,6 +27,7 @@ python -m pytest                       # tests
 10. [Project layout](#10-project-layout)
 11. [Validation and history](#11-validation-and-history)
 12. [Reinforcement learning: the Gymnasium environment](#12-reinforcement-learning-the-gymnasium-environment)
+13. [The browser Strategy Lab](#13-the-browser-strategy-lab)
 
 ---
 
@@ -552,6 +555,7 @@ blackjack_sim/
 │   ├── betting/progressions.py  # flat, Martingale, Paroli, D'Alembert, Fibonacci,
 │   │                            # Oscar's Grind, 1-3-2-6, random volatility, proportional
 │   └── betting/counting.py      # true-count bet spread (with optional Wonging)
+├── playground.py           # runs code typed into the browser Strategy Lab
 ├── rl/                     # Gymnasium env (optional dependency)
 │   ├── env.py              # BlackjackEnv: one round per episode, action masks
 │   └── agents.py           # random, basic-strategy and tabular Monte Carlo agents
@@ -563,6 +567,8 @@ blackjack_sim/
 │   └── export.py           # CSV output
 └── __main__.py             # CLI
 app/streamlit_app.py        # frontend
+web/                        # the browser Strategy Lab (static page, Python via Pyodide)
+scripts/build_web.py        # builds web/ + the zipped package into build/web
 configs/*.json              # example experiments: progressions, counting, play strategies
 scripts/rl_vs_basic.py      # train a tabular agent and compare it with basic strategy
 tests/                      # engine, strategy, simulation, RL env and README-example tests
@@ -639,3 +645,36 @@ python scripts/rl_vs_basic.py --train 2000000 --eval 500000
 
 Still open from the roadmap: a bet-sizing env, and an adapter that runs a
 trained policy as a `PlayStrategy` inside the experiment suite.
+
+---
+
+## 13. The browser Strategy Lab
+
+`web/` is a static page where you write a strategy in a code editor, set the table
+(players, decks, penetration, soft 17, insurance and the other house rules) and the
+simulation (rounds, sessions, bankroll, stop loss, win target), then hit **Run** to see
+your profit, your return per dollar bet, and how the bankroll moves over a session,
+next to basic strategy with a flat bet on the same cards.
+
+There is no server. The page loads [Pyodide](https://pyodide.org) (CPython compiled to
+WebAssembly) in a Web Worker and runs this package inside the browser tab, so
+anyone's code only ever runs on their own machine. The code in the editor is an
+ordinary module like the examples in §2 and §3: define a `PlayStrategy` (or
+`BasicStrategy`) subclass, a `BetStrategy` subclass, or both, without registering
+them. If you define several of one kind, pick one with `PLAY = MyClass` or
+`BET = MyClass`. `blackjack_sim/playground.py` is the glue; it only uses the
+pure-Python parts of the package, so the page doesn't download numpy.
+
+```bash
+python scripts/build_web.py              # writes build/web/ (the page + blackjack_sim.zip)
+python -m http.server -d build/web       # open http://localhost:8000
+```
+
+**Publishing.** `.github/workflows/pages.yml` builds the same folder and deploys it to
+GitHub Pages on every push to `main`, at
+`https://antonio-1110.github.io/BlackJack-Simulation/`. It needs one setting, once:
+*Settings → Pages → Build and deployment → Source: GitHub Actions*.
+
+Pyodide runs the simulator roughly three to four times slower than regular Python,
+so 50 sessions of 1,000 rounds (plus the baseline) takes several seconds. The
+Stop button restarts the Python worker, which also rescues an infinite loop.
