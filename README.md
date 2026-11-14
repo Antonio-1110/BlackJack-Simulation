@@ -1,9 +1,17 @@
 # Blackjack Simulation
 
+[![Strategy Lab](https://img.shields.io/badge/Strategy_Lab-try_it_online-2ea44f)](https://antonio-1110.github.io/BlackJack-Simulation/)
+[![Deploy](https://github.com/Antonio-1110/BlackJack-Simulation/actions/workflows/pages.yml/badge.svg)](https://github.com/Antonio-1110/BlackJack-Simulation/actions/workflows/pages.yml)
+
 A blackjack engine plus a Monte Carlo suite for testing **play strategies** (how you
 play a hand) and **bet-sizing strategies** (how much you bet each round), with a
 Streamlit frontend for configuring and comparing them, and a browser **Strategy Lab**
 where you type a strategy in Python and hit Run (see [§13](#13-the-browser-strategy-lab)).
+
+**Try the Strategy Lab online:** <https://antonio-1110.github.io/BlackJack-Simulation/>.
+Nothing to install; your code runs in your own browser tab.
+
+To run it locally (Python 3.10+):
 
 ```bash
 pip install -r requirements.txt        # or: pip install -e ".[app,dev]"
@@ -12,6 +20,9 @@ python -m blackjack_sim run configs/progressions.json   # the same from the CLI
 python -m pytest                       # tests
 python scripts/build_web.py && python -m http.server -d build/web   # the Strategy Lab
 ```
+
+Want to add a feature or fix something? [CONTRIBUTING.md](CONTRIBUTING.md) covers the
+dev setup, the tests and how work is split into issues.
 
 **Contents**
 
@@ -569,6 +580,7 @@ blackjack_sim/
 app/streamlit_app.py        # frontend
 web/                        # the browser Strategy Lab (static page, Python via Pyodide)
 scripts/build_web.py        # builds web/ + the zipped package into build/web
+scripts/smoke_web.py        # runs the built page's examples the way the browser does
 configs/*.json              # example experiments: progressions, counting, play strategies
 scripts/rl_vs_basic.py      # train a tabular agent and compare it with basic strategy
 tests/                      # engine, strategy, simulation, RL env and README-example tests
@@ -650,6 +662,8 @@ trained policy as a `PlayStrategy` inside the experiment suite.
 
 ## 13. The browser Strategy Lab
 
+**Live at <https://antonio-1110.github.io/BlackJack-Simulation/>.**
+
 `web/` is a static page where you write a strategy in a code editor, set the table
 (players, decks, penetration, soft 17, insurance and the other house rules) and the
 simulation (rounds, sessions, bankroll, stop loss, win target), then hit **Run** to see
@@ -665,15 +679,21 @@ them. If you define several of one kind, pick one with `PLAY = MyClass` or
 `BET = MyClass`. `blackjack_sim/playground.py` is the glue; it only uses the
 pure-Python parts of the package, so the page doesn't download numpy.
 
+To run your own copy locally, for example while changing the page or the engine:
+
 ```bash
 python scripts/build_web.py              # writes build/web/ (the page + blackjack_sim.zip)
 python -m http.server -d build/web       # open http://localhost:8000
 ```
 
-**Publishing.** `.github/workflows/pages.yml` builds the same folder and deploys it to
-GitHub Pages on every push to `main`, at
-`https://antonio-1110.github.io/BlackJack-Simulation/`. It needs one setting, once:
-*Settings → Pages → Build and deployment → Source: GitHub Actions*.
+**Publishing.** `.github/workflows/pages.yml` builds the same folder, runs
+`scripts/smoke_web.py` on it (every example strategy, from the zipped package, with
+numpy blocked like in the browser), and deploys it to the live site whenever a push to
+`main` touches `web/`, `blackjack_sim/` or the build scripts. A merged change shows up a
+minute or two later. Pull requests run the same build and smoke test without
+deploying, so a change that would break the page fails on the PR. The repository's
+Pages source must stay on *GitHub Actions* (Settings → Pages → Build and deployment);
+a fork needs that setting once to publish its own copy.
 
 Pyodide runs the simulator roughly three to four times slower than regular Python,
 so 50 sessions of 1,000 rounds (plus the baseline) takes several seconds. The
