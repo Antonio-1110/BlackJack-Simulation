@@ -1,18 +1,37 @@
-// Page logic: editor, settings, the Python worker, and rendering results.
+// Page logic: editor, settings, saving and sharing, the Python worker, and
+// rendering results.
 (() => {
   const $ = (id) => document.getElementById(id);
-  const STORAGE_KEY = "bj-lab-code";
+  const CODE_KEY = "bj-lab-code";
+  const SETTINGS_KEY = "bj-lab-settings";
+  const SAVED_KEY = "bj-lab-saved";
+  const SHARE_PREFIX = "#lab=";
+
+  // Browser storage can be blocked (private windows, strict settings), so
+  // every access is wrapped and the page still works without it.
+  const store = {
+    get(key) { try { return localStorage.getItem(key); } catch (_) { return null; } },
+    set(key, value) { try { localStorage.setItem(key, value); return true; } catch (_) { return false; } },
+  };
+  const readJSON = (key, fallback) => {
+    try { return JSON.parse(store.get(key)) ?? fallback; } catch (_) { return fallback; }
+  };
+
+  let toastTimer = 0;
+  function toast(text) {
+    $("toast").textContent = text;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { $("toast").textContent = ""; }, 5000);
+  }
 
   // ------------------------------------------------------------ editor
   const examples = window.EXAMPLES;
-  const exampleSelect = $("example");
-  examples.forEach((ex, i) => exampleSelect.add(new Option(ex.name, String(i))));
+  const picker = $("example");
+  let savedList = readJSON(SAVED_KEY, []).filter((s) => s && typeof s.name === "string" && typeof s.code === "string");
 
-  let saved = null;
-  try { saved = localStorage.getItem(STORAGE_KEY); } catch (_) { /* storage blocked */ }
-
+  const storedCode = store.get(CODE_KEY);
   const editor = CodeMirror($("editor"), {
-    value: saved || examples[0].code,
+    value: storedCode || examples[0].code,
     mode: "python",
     lineNumbers: true,
     indentUnit: 4,
@@ -25,22 +44,188 @@
       "Cmd-Enter": () => startRun(),
     },
   });
-  editor.on("change", () => {
-    try { localStorage.setItem(STORAGE_KEY, editor.getValue()); } catch (_) { /* storage blocked */ }
-  });
-  if (saved) exampleSelect.value = "";
+  // The code as it was last loaded from an example, a saved strategy, a file
+  // or a link. Replacing code that still matches it needs no confirmation.
+  let loadedCode = storedCode ? null : examples[0].code;
+  let loadedName = storedCode ? null : examples[0].name;
 
-  exampleSelect.addEventListener("change", () => {
-    const ex = examples[Number(exampleSelect.value)];
-    if (!ex) return;
+  editor.on("change", () => {
+    store.set(CODE_KEY, editor.getValue());
+    clearErrorLine();
+  });
+
+  function fillPicker(selected) {
+    picker.innerHTML = "";
+    const placeholder = new Option("Your current code", "");
+    placeholder.hidden = true;
+    picker.add(placeholder);
+    const exGroup = document.createElement("optgroup");
+    exGroup.label = "Examples";
+    examples.forEach((ex, i) => exGroup.appendChild(new Option(ex.name, `ex:${i}`)));
+    picker.appendChild(exGroup);
+    if (savedList.length) {
+      const savedGroup = document.createElement("optgroup");
+      savedGroup.label = "Saved in this browser";
+      savedList.forEach((s, i) => savedGroup.appendChild(new Option(s.name, `saved:${i}`)));
+      picker.appendChild(savedGroup);
+    }
+    picker.value = selected || "";
+    $("delete-saved").hidden = !picker.value.startsWith("saved:");
+  }
+
+  function isDirty() {
     const current = editor.getValue();
-    const untouched = examples.some((e) => e.code === current);
-    if (!untouched && !confirm("Replace your code with this example?")) {
-      exampleSelect.value = "";
+    return current.trim() !== "" && current !== loadedCode && !examples.some((e) => e.code === current);
+  }
+
+  function loadCode(code, name, pickerValue) {
+    editor.setValue(code);
+    loadedCode = code;
+    loadedName = name;
+    fillPicker(pickerValue);
+  }
+
+  fillPicker(storedCode ? (examples.findIndex((e) => e.code === storedCode) >= 0
+    ? `ex:${examples.findIndex((e) => e.code === storedCode)}` : "") : "ex:0");
+
+  picker.addEventListener("change", () => {
+    const [kind, idx] = picker.value.split(":");
+    const item = kind === "ex" ? examples[Number(idx)] : savedList[Number(idx)];
+    if (!item) return;
+    if (isDirty() && !confirm(`Replace your code with "${item.name}"? Use "Save as…" first to keep it.`)) {
+      fillPicker("");
       return;
     }
-    editor.setValue(ex.code);
+    loadCode(item.code, item.name, picker.value);
+    if (kind === "saved" && item.settings) applySettings(item.settings);
+    if (kind === "saved") toast(`Loaded "${item.name}" with its table and simulation settings.`);
   });
+
+  function persistSaved() {
+    if (!store.set(SAVED_KEY, JSON.stringify(savedList))) {
+      toast("Your browser is blocking storage, so this can't be kept. Try Download .py instead.");
+      return false;
+    }
+    return true;
+  }
+
+  $("save-as").addEventListener("click", () => {
+    const suggestion = loadedName && savedList.some((s) => s.name === loadedName) ? loadedName : "";
+    const name = (prompt("Name this strategy (saved with your current settings, in this browser only):", suggestion) || "").trim();
+    if (!name) return;
+    const entry = { name, code: editor.getValue(), settings: readSettings(), savedAt: new Date().toISOString() };
+    let idx = savedList.findIndex((s) => s.name === name);
+    if (idx >= 0) {
+      if (!confirm(`Replace the saved strategy "${name}"?`)) return;
+      savedList[idx] = entry;
+    } else {
+      savedList.push(entry);
+      idx = savedList.length - 1;
+    }
+    if (!persistSaved()) return;
+    loadedCode = entry.code;
+    loadedName = name;
+    fillPicker(`saved:${idx}`);
+    toast(`Saved "${name}".`);
+  });
+
+  $("delete-saved").addEventListener("click", () => {
+    const idx = Number(picker.value.split(":")[1]);
+    const item = savedList[idx];
+    if (!item || !confirm(`Delete the saved strategy "${item.name}"? Your code in the editor stays.`)) return;
+    savedList.splice(idx, 1);
+    persistSaved();
+    fillPicker("");
+    toast(`Deleted "${item.name}".`);
+  });
+
+  // A file name from the strategy's name, e.g. "Hi-Lo spread" -> hi-lo-spread.py
+  const fileName = (ext) => `${(loadedName || "my-strategy").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "strategy"}.${ext}`;
+
+  function download(name, text, type) {
+    const url = URL.createObjectURL(new Blob([text], { type }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: name });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  $("download-py").addEventListener("click", () => download(fileName("py"), editor.getValue(), "text/x-python"));
+
+  $("open-py").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > 500_000) { toast("That file is too big for a strategy (over 500 KB)."); return; }
+    const text = await file.text();
+    if (isDirty() && !confirm(`Replace your code with ${file.name}?`)) return;
+    loadCode(text, file.name.replace(/\.py$/i, ""), "");
+    toast(`Opened ${file.name}.`);
+  });
+
+  // ------------------------------------------------------- share links
+  // The code and settings, deflated and base64url-encoded into the URL hash.
+  // Nothing is uploaded: the link itself carries the strategy.
+  const b64url = (bytes) => {
+    let s = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  };
+  const unb64url = (text) => Uint8Array.from(atob(text.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+  const pipe = async (bytes, stream) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
+
+  async function encodeShare(payload) {
+    const json = new TextEncoder().encode(JSON.stringify(payload));
+    return b64url(await pipe(json, new CompressionStream("deflate-raw")));
+  }
+  async function decodeShare(text) {
+    const json = await pipe(unb64url(text), new DecompressionStream("deflate-raw"));
+    return JSON.parse(new TextDecoder().decode(json));
+  }
+
+  $("share").addEventListener("click", async () => {
+    let url;
+    try {
+      const token = await encodeShare({ v: 1, name: loadedName || undefined, code: editor.getValue(), settings: readSettings() });
+      url = `${location.origin}${location.pathname}${SHARE_PREFIX}${token}`;
+    } catch (err) {
+      toast("This browser can't make share links (it's missing CompressionStream).");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast("Link copied. It holds your code and settings, so anyone with it can open the same setup.");
+    } catch (_) {
+      history.replaceState(null, "", url);
+      toast("Couldn't reach the clipboard, so the link is in the address bar. Copy it from there.");
+    }
+  });
+
+  async function openSharedLink() {
+    if (!location.hash.startsWith(SHARE_PREFIX)) return;
+    const token = location.hash.slice(SHARE_PREFIX.length);
+    history.replaceState(null, "", location.pathname + location.search);
+    let shared;
+    try {
+      shared = await decodeShare(token);
+      if (typeof shared.code !== "string") throw new Error("no code");
+    } catch (_) {
+      toast("That share link looks broken or cut off, so your own code is still here.");
+      return;
+    }
+    // Keep the visitor's own work: back it up before the link replaces it.
+    const backup = isDirty() && editor.getValue() !== shared.code;
+    if (backup) {
+      const name = `My code before opening a link (${new Date().toLocaleString()})`;
+      savedList.push({ name, code: editor.getValue(), settings: readSettings(), savedAt: new Date().toISOString() });
+      persistSaved();
+    }
+    const name = typeof shared.name === "string" ? shared.name : "Shared strategy";
+    loadCode(shared.code, name, "");
+    if (shared.settings) applySettings(shared.settings);
+    toast(`Opened "${name}" from a shared link.` + (backup ? " Your own code is under Saved in this browser." : ""));
+  }
 
   // ---------------------------------------------------------- settings
   const outputs = {
@@ -48,15 +233,19 @@
     num_decks: (v) => v,
     penetration: (v) => `${Math.round(v * 100)}%`,
   };
-  for (const [id, fmt] of Object.entries(outputs)) {
-    const input = $(id);
-    const show = () => { $(`${id}-out`).textContent = fmt(input.value); };
-    input.addEventListener("input", show);
-    show();
+  function refreshOutputs() {
+    for (const [id, fmt] of Object.entries(outputs)) $(`${id}-out`).textContent = fmt($(id).value);
   }
+  for (const id of Object.keys(outputs)) $(id).addEventListener("input", refreshOutputs);
+  refreshOutputs();
 
   const num = (id) => Number($(id).value);
   const checked = (id) => $(id).checked;
+
+  // Form fields by settings key. "players" is stored as other_players.
+  const RULE_FIELDS = ["num_decks", "penetration", "insurance", "blackjack_payout", "double_on", "surrender",
+    "double_after_split", "resplit_aces", "dealer_peeks", "table_min", "table_max"];
+  const SESSION_FIELDS = ["rounds", "sessions", "bankroll", "seed", "stop_loss", "win_target"];
 
   function readSettings() {
     return {
@@ -87,6 +276,45 @@
     };
   }
 
+  // Puts settings (from storage, a saved strategy or a link) back in the
+  // form. Unknown keys and values the form can't show are skipped.
+  function applySettings(s) {
+    if (!s || typeof s !== "object") return;
+    const setField = (id, value) => {
+      const el = $(id);
+      if (!el || value == null) return;
+      if (el.type === "checkbox") el.checked = Boolean(value);
+      else if (el.tagName === "SELECT") {
+        if ([...el.options].some((o) => o.value === String(value))) el.value = String(value);
+      } else if (Number.isFinite(Number(value))) el.value = String(value);
+    };
+    const rules = s.rules || {};
+    const session = s.session || {};
+    RULE_FIELDS.forEach((k) => setField(k, rules[k]));
+    SESSION_FIELDS.forEach((k) => setField(k, session[k]));
+    if (typeof rules.dealer_hits_soft_17 === "boolean") {
+      document.querySelector(`input[name=dealer_hits_soft_17][value="${rules.dealer_hits_soft_17}"]`).checked = true;
+    }
+    if (Number.isFinite(session.other_players)) setField("players", session.other_players + 1);
+    if (typeof s.compare === "boolean") $("compare").checked = s.compare;
+    refreshOutputs();
+    saveSettings();
+  }
+
+  const DEFAULT_SETTINGS = readSettings();
+  const saveSettings = () => store.set(SETTINGS_KEY, JSON.stringify(readSettings()));
+  applySettings(readJSON(SETTINGS_KEY, null));
+  $("settings").addEventListener("input", saveSettings);
+  $("settings").addEventListener("change", saveSettings);
+  $("reset-settings").addEventListener("click", () => {
+    applySettings(DEFAULT_SETTINGS);
+    $("progress-text").textContent = "Settings are back to the defaults.";
+  });
+
+  openSharedLink();
+  // Pasting a link into a tab that already has the Lab open only changes the hash.
+  addEventListener("hashchange", openSharedLink);
+
   // ------------------------------------------------------------ worker
   let worker = null;
   let running = false;
@@ -109,7 +337,9 @@
   }
 
   function handle(msg) {
-    if (msg.type === "ready") {
+    if (msg.type === "status") {
+      setEngine(msg.text, "loading");
+    } else if (msg.type === "ready") {
       setEngine("Python ready", "ready");
       $("run").disabled = running;
     } else if (msg.type === "boot-error") {
@@ -135,7 +365,9 @@
     $("progress-bar").style.width = "0%";
     $("progress-text").textContent = "Starting…";
     runStarted = performance.now();
-    worker.postMessage({ code: editor.getValue(), settings: readSettings() });
+    clearErrorLine();
+    lastRun = { code: editor.getValue(), settings: readSettings() };
+    worker.postMessage(lastRun);
   }
 
   let runStarted = 0;
@@ -162,12 +394,28 @@
   // ----------------------------------------------------------- results
   const charts = {};
   let lastResult = null;
+  let lastRun = null;
+  let errorLine = null;
 
   function showError(text) {
     $("results").hidden = false;
     $("error").hidden = false;
-    $("error").textContent = text;
     $("result-body").hidden = true;
+    // Tracebacks and syntax errors name the line as: File "<your code>", line 12
+    const lines = [...text.matchAll(/"<your code>", line (\d+)/g)];
+    const line = lines.length ? Number(lines[lines.length - 1][1]) : null;
+    $("error").textContent = line && line <= editor.lineCount()
+      ? `${text}\n\nLine ${line} is highlighted in the editor.` : text;
+    if (line && line <= editor.lineCount()) {
+      errorLine = editor.addLineClass(line - 1, "wrap", "cm-error-line");
+      editor.setCursor(line - 1, 0);
+    }
+    $("error").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function clearErrorLine() {
+    if (errorLine) editor.removeLineClass(errorLine, "wrap", "cm-error-line");
+    errorLine = null;
   }
 
   const money = (v, sign = false) => {
@@ -194,6 +442,7 @@
     $("used").textContent = `Ran ${yours.summary.sessions} sessions with ${used.join(" and ")}.`;
 
     renderTiles(yours.summary, base && base.summary);
+    renderEdge(yours.summary, base && base.summary);
     renderBankroll(result);
     renderProfit(result);
     renderStats(result);
@@ -226,6 +475,84 @@
       $("tiles").appendChild(el);
     }
   }
+
+  // ------------------------------------------------- edge vs baseline
+  // Return per $1 bet with a 95% range for each strategy, and a plain verdict
+  // on whether the run can tell them apart. The ranges treat the two runs as
+  // independent; both use the same shuffles, so this errs on the cautious side.
+  function renderEdge(s, b) {
+    const card = $("edge-card");
+    if (!b || s.edge_se_pct == null || b.edge_se_pct == null) { card.hidden = true; return; }
+    card.hidden = false;
+    const rows = [
+      { name: "Your strategy", edge: s.edge_pct, half: 1.96 * s.edge_se_pct, cls: "" },
+      { name: "Basic strategy, flat bet", edge: b.edge_pct, half: 1.96 * b.edge_se_pct, cls: "is-base" },
+    ];
+    const diff = s.edge_pct - b.edge_pct;
+    const seDiff = Math.hypot(s.edge_se_pct, b.edge_se_pct);
+    const verdict = $("verdict");
+    verdict.innerHTML = "";
+    const strong = document.createElement("strong");
+    const amount = `${Math.abs(diff).toFixed(2)}%`;
+    if (Math.abs(diff) > 1.96 * seDiff) {
+      strong.textContent = diff > 0 ? `Your strategy is ahead by ${amount} per $1 bet.` : `Your strategy is behind by ${amount} per $1 bet.`;
+      strong.dataset.tone = diff > 0 ? "pos" : "neg";
+      verdict.append(strong, " That gap is bigger than the run's noise, so it's very likely real for these rules.");
+    } else {
+      strong.textContent = "Too close to call.";
+      const need = s.sessions * (1.96 * seDiff / Math.max(Math.abs(diff), 1e-9)) ** 2;
+      const more = need > 10000
+        ? " The gap is so small it would take more than 10,000 sessions to measure, so the two are about the same."
+        : ` To tell a ${amount} gap from luck, try about ${(Math.ceil(need / 10) * 10).toLocaleString()} sessions.`;
+      verdict.append(strong, ` Your strategy's return differs from basic strategy by ${amount} per $1 bet, which is within the run's noise.${more}`);
+    }
+
+    let lo = Math.min(0, ...rows.map((r) => r.edge - r.half));
+    let hi = Math.max(0, ...rows.map((r) => r.edge + r.half));
+    const pad = (hi - lo) * 0.08 || 0.5;
+    lo -= pad; hi += pad;
+    const x = (v) => `${(100 * (v - lo)) / (hi - lo)}%`;
+    const forest = $("forest");
+    forest.innerHTML = "";
+    for (const r of rows) {
+      const row = document.createElement("div");
+      row.className = `f-row ${r.cls}`;
+      row.innerHTML = `<span class="f-name"></span><div class="f-track"><div class="f-zero"></div><div class="f-range"></div><div class="f-dot"></div></div><span class="f-val"></span>`;
+      row.querySelector(".f-name").textContent = r.name;
+      row.querySelector(".f-zero").style.left = x(0);
+      const range = row.querySelector(".f-range");
+      range.style.left = x(r.edge - r.half);
+      range.style.width = `${(100 * 2 * r.half) / (hi - lo)}%`;
+      row.querySelector(".f-dot").style.left = x(r.edge);
+      row.querySelector(".f-val").textContent = `${signedPct(r.edge)} ± ${r.half.toFixed(2)}%`;
+      forest.appendChild(row);
+    }
+    const axis = document.createElement("div");
+    axis.className = "f-axis";
+    const step = niceStep((hi - lo) / 4);
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+      const tick = document.createElement("span");
+      tick.style.left = x(v);
+      tick.textContent = signedPct(Math.abs(v) < step / 1e6 ? 0 : v, step < 0.1 ? 2 : step < 1 ? 1 : 0);
+      axis.appendChild(tick);
+    }
+    forest.appendChild(axis);
+  }
+
+  // ---------------------------------------------------------- downloads
+  $("download-csv").addEventListener("click", () => {
+    if (!lastResult) return;
+    const cands = lastResult.candidates;
+    const quote = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    const lines = [["session", ...cands.map((c) => `${c.name} profit`)].map(quote).join(",")];
+    cands[0].nets.forEach((_, i) => lines.push([i + 1, ...cands.map((c) => c.nets[i])].join(",")));
+    download(fileName("csv"), lines.join("\n") + "\n", "text/csv");
+  });
+  $("download-json").addEventListener("click", () => {
+    if (!lastResult) return;
+    const out = { code: lastRun && lastRun.code, settings: lastRun && lastRun.settings, ...lastResult };
+    download(fileName("json"), JSON.stringify(out, null, 2), "application/json");
+  });
 
   // Colors come from CSS tokens so charts follow light and dark mode.
   function tokens() {

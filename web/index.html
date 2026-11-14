@@ -30,9 +30,17 @@
         </div>
       </div>
       <div id="editor"></div>
+      <div class="toolbar" role="toolbar" aria-label="Save and share">
+        <button type="button" id="save-as">Save as…</button>
+        <button type="button" id="delete-saved" hidden>Delete saved</button>
+        <button type="button" id="share">Copy share link</button>
+        <button type="button" id="download-py">Download .py</button>
+        <label class="button" for="open-py">Open .py<input type="file" id="open-py" accept=".py,text/x-python,text/plain" class="visually-hidden"></label>
+        <span class="toast" id="toast" role="status" aria-live="polite"></span>
+      </div>
       <p class="hint">Define a class that extends <code>PlayStrategy</code> or <code>BasicStrategy</code> (how you play a hand)
         and/or <code>BetStrategy</code> (how much you bet). Leave one out and it falls back to basic strategy or a flat
-        table-minimum bet. See the <a href="https://github.com/Antonio-1110/BlackJack-Simulation#2-designing-a-play-strategy" target="_blank" rel="noopener">strategy guide</a>.</p>
+        table-minimum bet. Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>⌘</kbd>+<kbd>Enter</kbd> on a Mac) to run. See the <a href="https://github.com/Antonio-1110/BlackJack-Simulation#2-designing-a-play-strategy" target="_blank" rel="noopener">strategy guide</a>.</p>
     </section>
 
     <section class="panel settings-panel" aria-labelledby="settings-h">
@@ -115,6 +123,7 @@
 
         <div class="run-row">
           <button type="submit" id="run" class="primary" disabled>Hit Run</button>
+          <button type="button" id="reset-settings" class="link">Reset settings</button>
           <button type="button" id="stop" hidden>Stop</button>
         </div>
         <div class="progress" id="progress" hidden><div class="bar" id="progress-bar"></div></div>
@@ -128,6 +137,13 @@
       <div id="result-body">
         <p class="used" id="used"></p>
         <div class="tiles" id="tiles"></div>
+
+        <div class="panel chart-card" id="edge-card" hidden>
+          <h3>Your edge against basic strategy</h3>
+          <p class="verdict" id="verdict"></p>
+          <div class="forest" id="forest" role="img" aria-label="Return per $1 bet with 95% ranges"></div>
+          <p class="chart-sub">Dots are the return per $1 bet; bars are the 95% range. When the bars overlap a lot, the run can't tell the two apart yet.</p>
+        </div>
 
         <div class="panel chart-card">
           <div class="panel-head">
@@ -147,6 +163,8 @@
         <details class="panel">
           <summary><h3 class="inline-h">All the numbers</h3></summary>
           <div class="table-wrap"><table id="stats-table"></table></div>
+          <p class="downloads"><button type="button" id="download-csv">Download every session (CSV)</button>
+            <button type="button" id="download-json">Download full results (JSON)</button></p>
         </details>
 
         <details class="panel">
