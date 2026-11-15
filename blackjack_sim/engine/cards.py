@@ -8,6 +8,7 @@ hot simulation loop fast.
 from __future__ import annotations
 
 import random
+from collections import Counter
 from typing import Iterable
 
 ACE = 1
@@ -53,6 +54,9 @@ class Shoe:
         self.total_cards = 52 * num_decks
         self._cut_index = int(round(self.total_cards * penetration))
         self._cards: list[int] = []
+        self._in_play: list[int] = []  # cards drawn this round (still on the table)
+        self._in_play_seen = [0] * 11
+        self._reshuffle_due = False
         self.dealt = 0
         self.seen = [0] * 11  # index by card value 1..10; index 0 unused
         self.seen_total = 0
@@ -68,13 +72,51 @@ class Shoe:
         self.seen = [0] * 11
         self.seen_total = 0
         self.shuffles += 1
-        for _ in range(self.burn_cards):
-            self.draw()
+        self._reshuffle_due = False
+        self._in_play = []
+        self._in_play_seen = [0] * 11
+        self._burn()
+
+    def _burn(self) -> None:
+        for _ in range(min(self.burn_cards, len(self._cards) - 1)):
+            self._cards.pop()
+            self.dealt += 1
+
+    def start_round(self) -> None:
+        """Forget which cards are on the table: the previous round's cards are
+        now in the discard tray. The table calls this at the start of a round."""
+        self._in_play = []
+        self._in_play_seen = [0] * 11
+
+    def _reshuffle_discards(self) -> None:
+        """The shoe ran out mid-round: shuffle the discards back in.
+
+        Cards still on the table stay out of the new stack, so a round can
+        never contain more copies of a rank than the shoe holds. The count
+        restarts from the cards on the table that everyone has already seen,
+        and a full shuffle is forced before the next round.
+        """
+        in_play = Counter(self._in_play)
+        cards = [
+            rank
+            for rank in range(1, 14)
+            for _ in range(4 * self.num_decks - in_play[rank])
+        ]
+        if not cards:  # every card is on the table; nothing left to reshuffle
+            cards = list(range(1, 14)) * (4 * self.num_decks)
+        self.rng.shuffle(cards)
+        self._cards = cards
+        self.seen = list(self._in_play_seen)
+        self.seen_total = sum(self.seen)
+        self.shuffles += 1
+        self._reshuffle_due = True
+        self._burn()
 
     @property
     def needs_shuffle(self) -> bool:
-        """True once the cut card has been reached."""
-        return self.dealt >= self._cut_index
+        """True once the cut card has been reached (or the discards had to be
+        reshuffled mid-round)."""
+        return self._reshuffle_due or self.dealt >= self._cut_index
 
     @property
     def cards_remaining(self) -> int:
@@ -92,16 +134,19 @@ class Shoe:
     # --------------------------------------------------------------- dealing
     def draw(self) -> int:
         if not self._cards:
-            # Only reachable with extreme penetration / many seats. Real tables
-            # would reshuffle the discards; a fresh shoe is a close stand-in.
-            self.shuffle()
+            # Reachable with deep penetration and several seats.
+            self._reshuffle_discards()
         self.dealt += 1
-        return self._cards.pop()
+        card = self._cards.pop()
+        self._in_play.append(card)
+        return card
 
     def observe(self, rank: int) -> None:
         """Mark a card as seen by everyone at the table."""
-        self.seen[10 if rank >= 10 else rank] += 1
+        v = 10 if rank >= 10 else rank
+        self.seen[v] += 1
         self.seen_total += 1
+        self._in_play_seen[v] += 1
 
     def draw_seen(self) -> int:
         card = self.draw()
