@@ -4,11 +4,17 @@ const PYODIDE_URL = "https://cdn.jsdelivr.net/npm/pyodide@0.29.5/";
 importScripts(PYODIDE_URL + "pyodide.js");
 
 async function boot() {
+  postMessage({ type: "status", text: "Downloading Python…" });
+  // Fetch the simulator package (zipped by scripts/build_web.py) while
+  // Pyodide downloads and compiles, instead of after it.
+  const zip = fetch("blackjack_sim.zip").then((res) => {
+    if (!res.ok) throw new Error(`Couldn't load blackjack_sim.zip (HTTP ${res.status}). Build the site with scripts/build_web.py.`);
+    return res.arrayBuffer();
+  });
+  zip.catch(() => {}); // reported below, once Pyodide is up
   const pyodide = await loadPyodide({ indexURL: PYODIDE_URL });
-  // The simulator package, zipped by scripts/build_web.py.
-  const res = await fetch("blackjack_sim.zip");
-  if (!res.ok) throw new Error(`Couldn't load blackjack_sim.zip (HTTP ${res.status}). Build the site with scripts/build_web.py.`);
-  pyodide.unpackArchive(await res.arrayBuffer(), "zip");
+  postMessage({ type: "status", text: "Loading the simulator…" });
+  pyodide.unpackArchive(await zip, "zip");
   pyodide.runPython(`
 import json
 from blackjack_sim import playground

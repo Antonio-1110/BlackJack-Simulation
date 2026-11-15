@@ -207,3 +207,49 @@ thead th { position: sticky; top: 0; background: var(--surface-1); color: var(--
 tbody th { font-weight: 500; }
 
 .foot { max-width: 1400px; margin: 0 auto; padding: 0 16px 24px; color: var(--text-muted); font-size: 0.82rem; }
+
+/* Save / share toolbar under the editor */
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+.toolbar button, .toolbar .button, .downloads button {
+  font-size: 0.82rem; font-weight: 550; padding: 5px 11px; border-radius: 6px;
+}
+.button {
+  display: inline-block; cursor: pointer; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-primary);
+}
+.button:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.toast { font-size: 0.82rem; color: var(--text-secondary); }
+button.link {
+  flex: none; background: none; border: 0; padding: 10px 4px; color: var(--text-secondary);
+  font-weight: 500; font-size: 0.85rem; text-decoration: underline;
+}
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8em;
+  border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--surface-2);
+}
+.downloads { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+
+/* The line an error points at */
+.cm-error-line { background: var(--error-bg); }
+.cm-error-line .CodeMirror-linenumber { color: var(--bad); font-weight: 700; }
+
+/* Edge vs baseline: a two-row interval plot */
+.verdict { margin: 4px 0 12px; }
+.verdict strong[data-tone="pos"] { color: var(--good); }
+.verdict strong[data-tone="neg"] { color: var(--bad); }
+.forest { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 10px 12px; align-items: center; margin-bottom: 8px; }
+.forest .f-row { display: contents; }
+.forest .f-name { font-size: 0.88rem; }
+.forest .f-val { font-size: 0.85rem; font-variant-numeric: tabular-nums; color: var(--text-secondary); text-align: right; }
+.forest .f-track { position: relative; height: 22px; }
+.forest .f-zero { position: absolute; top: -6px; bottom: -6px; width: 0; border-left: 1px dashed var(--text-muted); }
+.forest .f-range { position: absolute; top: 9px; height: 4px; border-radius: 2px; background: var(--band-50); min-width: 2px; }
+.forest .f-dot { position: absolute; top: 5px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--series-1); border: 2px solid var(--surface-1); }
+.forest .is-base .f-range { background: color-mix(in srgb, var(--baseline) 35%, transparent); }
+.forest .is-base .f-dot { background: var(--baseline); }
+.forest .f-axis { grid-column: 2; position: relative; height: 16px; font-size: 0.75rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.forest .f-axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+@media (max-width: 600px) {
+  .forest { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .forest .f-axis { grid-column: 1; }
+  .forest .f-val { text-align: left; margin-bottom: 8px; }
+}
