@@ -196,6 +196,7 @@ class Table:
 
         shuffled = self.prepare_round()
         self._prepared = False
+        shoe.start_round()
 
         active = [i for i in range(n) if bets[i] > 0]
         committed = [0.0] * n
@@ -289,10 +290,16 @@ class Table:
             dealer.add(shoe.draw())
         shoe.observe(dealer.cards[1])
         dealer_bj = dealer.is_blackjack
+        charlie = rules.charlie_cards
         live = False
         for seat_hands in hands.values():
             for hd in seat_hands:
-                if not (hd.hard > 21 or hd.surrendered or hd.is_blackjack):
+                if not (
+                    hd.hard > 21
+                    or hd.surrendered
+                    or hd.is_blackjack
+                    or (charlie and len(hd.cards) >= charlie)
+                ):
                     live = True
                     break
             if live:
@@ -324,7 +331,21 @@ class Table:
             original_lost = False
             for hand in seat_hands:
                 b = hand.bet
-                if hand.surrendered:
+                if obo and not hand.is_blackjack:
+                    # Original bets only: against a dealer blackjack the seat
+                    # loses its original bet once, however many hands it split
+                    # into, doubled or busted; the extra money is returned.
+                    if original_lost:
+                        hand.outcome, hand.net = Outcome.PUSH, 0.0
+                    else:
+                        hand.outcome = (
+                            Outcome.SURRENDER if hand.surrendered
+                            else Outcome.BUST if hand.is_bust
+                            else Outcome.LOSE
+                        )
+                        hand.net = -bets[i]
+                        original_lost = True
+                elif hand.surrendered:
                     hand.outcome = Outcome.SURRENDER
                     hand.net = -b if dealer_bj else -b / 2
                 elif hand.is_bust:
@@ -332,12 +353,8 @@ class Table:
                 elif dealer_bj:
                     if hand.is_blackjack:
                         hand.outcome, hand.net = Outcome.PUSH, 0.0
-                    elif obo and original_lost:
-                        hand.outcome, hand.net = Outcome.PUSH, 0.0
                     else:
-                        hand.outcome = Outcome.LOSE
-                        hand.net = -bets[i] if obo else -b
-                        original_lost = True
+                        hand.outcome, hand.net = Outcome.LOSE, -b
                 elif hand.is_blackjack:
                     hand.outcome, hand.net = Outcome.BLACKJACK, b * rules.blackjack_payout
                 elif rules.charlie_cards and len(hand.cards) >= rules.charlie_cards:
