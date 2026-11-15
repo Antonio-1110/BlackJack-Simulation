@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from .config import Candidate, ExperimentConfig
 from .session import SessionResult, run_session
+from .stats import interval_stats, paired_edge_difference
 
 if TYPE_CHECKING:
     import numpy as np
@@ -64,6 +65,11 @@ class ExperimentResult:
 
         return pd.DataFrame(self.summary_rows()).set_index("candidate")
 
+    def compare(self, a: str, b: str) -> dict[str, float | None]:
+        """Edge of candidate ``a`` minus candidate ``b`` (percentage points)
+        with a paired 95% interval; see :func:`.stats.paired_edge_difference`."""
+        return paired_edge_difference(self[a].sessions, self[b].sessions)
+
     def __getitem__(self, name: str) -> CandidateResult:
         for c in self.candidates:
             if c.name == name:
@@ -87,10 +93,23 @@ SUMMARY_COLUMNS: dict[str, str] = {
     "max_bet": "Largest bet seen",
     "edge_pct": "Return per unit bet, % (player edge)",
     "edge_se_pct": "Std error of edge, %",
+    "edge_ci_low_pct": "Edge 95% CI low, %",
+    "edge_ci_high_pct": "Edge 95% CI high, %",
     "ev_per_hand": "Expected profit per hand",
+    "ev_per_hand_se": "Std error of profit per hand",
+    "ev_per_hand_ci_low": "Profit per hand 95% CI low",
+    "ev_per_hand_ci_high": "Profit per hand 95% CI high",
     "sd_per_hand": "Std dev per hand",
     "avg_max_drawdown": "Avg max drawdown",
     "worst_max_drawdown": "Worst max drawdown",
+    "mean_net_se": "Std error of mean session profit",
+    "mean_net_ci_low": "Mean session profit 95% CI low",
+    "mean_net_ci_high": "Mean session profit 95% CI high",
+    "prob_profit_ci_low": "P(profit) 95% CI low",
+    "prob_profit_ci_high": "P(profit) 95% CI high",
+    "prob_ruin_ci_low": "P(ruin) 95% CI low",
+    "prob_ruin_ci_high": "P(ruin) 95% CI high",
+    "sessions_for_0_1pct": "Sessions for edge std error 0.1%",
 }
 
 
@@ -133,6 +152,7 @@ def summarize(sessions: list[SessionResult]) -> dict[str, float]:
         "sd_per_hand": float(math.sqrt(max(var_hand, 0.0))),
         "avg_max_drawdown": float(dd.mean()),
         "worst_max_drawdown": float(dd.max()),
+        **{k: (float("nan") if v is None else float(v)) for k, v in interval_stats(sessions).items()},
     }
 
 

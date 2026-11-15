@@ -56,6 +56,8 @@ class Rules:
             errors.append("num_decks must be >= 1")
         if not 0.1 <= self.penetration <= 1.0:
             errors.append("penetration must be between 0.1 and 1.0")
+        if not 0 <= self.burn_cards < 52 * max(self.num_decks, 1) // 2:
+            errors.append("burn_cards must be >= 0 and less than half the shoe")
         if self.double_on not in DOUBLE_OPTIONS:
             errors.append(f"double_on must be one of {DOUBLE_OPTIONS}")
         if self.surrender not in SURRENDER_OPTIONS:

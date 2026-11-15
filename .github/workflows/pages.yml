@@ -1,34 +1,59 @@
 name: Deploy playground to GitHub Pages
 
+# Pull requests only build and smoke-test the Strategy Lab, so a change that
+# would break the live page fails on the PR. Pushes to main build and deploy.
 on:
   push:
     branches: [main]
+    paths:
+      - "web/**"
+      - "blackjack_sim/**"
+      - "scripts/build_web.py"
+      - "scripts/smoke_web.py"
+      - ".github/workflows/pages.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - "blackjack_sim/**"
+      - "scripts/build_web.py"
+      - "scripts/smoke_web.py"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: python scripts/build_web.py build/web
-      - uses: actions/configure-pages@v5
+      # Runs every example strategy from the zipped package, without numpy,
+      # the way the browser does.
+      - run: python scripts/smoke_web.py build/web
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
       - id: deployment
         uses: actions/deploy-pages@v4
