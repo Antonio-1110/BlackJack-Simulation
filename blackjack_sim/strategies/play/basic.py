@@ -105,6 +105,9 @@ PAIR_INDEX_PLAYS = {(10, 5): 5, (10, 6): 4}  # split tens at or above this TC
 INSURANCE_INDEX = 3
 
 
+_CHARTS = {"hard": HARD, "soft": SOFT, "pair": PAIRS}
+
+
 def _col(up: int) -> int:
     return 9 if up == 1 else up - 2
 
@@ -126,8 +129,7 @@ class BasicStrategy(PlayStrategy):
             override = H17_CHANGES.get((table, row, up))
             if override:
                 return override
-        chart = {"hard": HARD, "soft": SOFT, "pair": PAIRS}[table]
-        return chart[row][_col(up)]
+        return _CHARTS[table][row][9 if up == 1 else up - 2]
 
     def play(self, d: Decision) -> Action:
         hand, up, legal, rules = d.hand, d.dealer_value, d.legal, d.rules

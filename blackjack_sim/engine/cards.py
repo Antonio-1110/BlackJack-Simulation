@@ -104,8 +104,14 @@ class Shoe:
         self.seen_total += 1
 
     def draw_seen(self) -> int:
-        card = self.draw()
-        self.observe(card)
+        """``draw()`` followed by ``observe()``, inlined: this is the hottest
+        call in the engine (every face-up card goes through it)."""
+        if not self._cards:
+            self.shuffle()
+        self.dealt += 1
+        card = self._cards.pop()
+        self.seen[10 if card >= 10 else card] += 1
+        self.seen_total += 1
         return card
 
     def stack(self, cards: Iterable[int]) -> None:

@@ -91,6 +91,10 @@ class RoundResult:
 
 RoundGenerator = Generator[Decision, Action, RoundResult]
 
+_STAND_ONLY = (Action.STAND,)
+_STAND_SPLIT = (Action.STAND, Action.SPLIT)
+_STAND_HIT = (Action.STAND, Action.HIT)
+
 
 class Table:
     """A blackjack table with ``num_seats`` player spots sharing one shoe."""
@@ -131,35 +135,42 @@ class Table:
     # ------------------------------------------------------------------ rules
     def legal_actions(self, hand: Hand, num_hands: int, available: float) -> tuple[Action, ...]:
         """Actions allowed for ``hand`` given the seat's uncommitted funds."""
+        # Called before every decision, so Hand properties are read directly
+        # from their fields (is_pair, is_split, total, is_soft).
         r = self.rules
-        two_cards = len(hand.cards) == 2
+        cards = hand.cards
+        two_cards = len(cards) == 2
         can_afford = available + _EPS >= hand.bet
-        can_split = (
-            two_cards
-            and hand.is_pair
-            and num_hands < r.max_split_hands
-            and can_afford
-            and not (hand.pair_value == 1 and hand.is_split and not r.resplit_aces)
-        )
+        split_depth = hand.split_depth
+        can_split = False
+        if two_cards and can_afford and num_hands < r.max_split_hands:
+            a, b = cards
+            pair_value = 10 if a >= 10 else a
+            if pair_value == (10 if b >= 10 else b):
+                can_split = not (pair_value == 1 and split_depth and not r.resplit_aces)
         if hand.from_split_aces and not r.hit_split_aces:
-            return (Action.STAND, Action.SPLIT) if can_split else (Action.STAND,)
+            return _STAND_SPLIT if can_split else _STAND_ONLY
 
+        if not two_cards:
+            return _STAND_HIT
         actions = [Action.STAND, Action.HIT]
-        if two_cards:
-            if (
-                can_afford
-                and r.can_double_total(hand.total, hand.is_soft)
-                and (not hand.is_split or r.double_after_split)
-            ):
-                actions.append(Action.DOUBLE)
-            if can_split:
-                actions.append(Action.SPLIT)
-            if r.surrender != "none" and not hand.is_split:
-                actions.append(Action.SURRENDER)
+        hard = hand.hard
+        soft = hand.has_ace and hard <= 11
+        if (
+            can_afford
+            and r.can_double_total(hard + 10 if soft else hard, soft)
+            and (not split_depth or r.double_after_split)
+        ):
+            actions.append(Action.DOUBLE)
+        if can_split:
+            actions.append(Action.SPLIT)
+        if r.surrender != "none" and not split_depth:
+            actions.append(Action.SURRENDER)
         return tuple(actions)
 
     def _hand_finished(self, hand: Hand) -> bool:
-        if hand.hard > 21 or hand.total == 21:
+        hard = hand.hard
+        if hard > 21 or hard == 21 or (hard == 11 and hand.has_ace):
             return True
         charlie = self.rules.charlie_cards
         return bool(charlie) and len(hand.cards) >= charlie
@@ -176,6 +187,8 @@ class Table:
         and insurance); ``None`` means unlimited.
         """
         rules, shoe = self.rules, self.shoe
+        draw_seen = shoe.draw_seen
+        hand_finished, legal_actions = self._hand_finished, self.legal_actions
         n = self.num_seats
         if len(bets) != n:
             raise ValueError(f"expected {n} bets, got {len(bets)}")
@@ -196,11 +209,11 @@ class Table:
         # ---- deal: one card each, dealer up, second card each, dealer hole
         dealer = Hand()
         for i in active:
-            hands[i][0].add(shoe.draw_seen())
-        up = shoe.draw_seen()
+            hands[i][0].add(draw_seen())
+        up = draw_seen()
         dealer.add(up)
         for i in active:
-            hands[i][0].add(shoe.draw_seen())
+            hands[i][0].add(draw_seen())
         if rules.dealer_peeks:
             dealer.add(shoe.draw())  # face down: not observed yet
 
@@ -233,10 +246,10 @@ class Table:
                 hand = seat_hands[h]
                 while True:
                     if len(hand.cards) == 1:  # split hand waiting for its 2nd card
-                        hand.add(shoe.draw_seen())
-                    if self._hand_finished(hand):
+                        hand.add(draw_seen())
+                    if hand_finished(hand):
                         break
-                    legal = self.legal_actions(hand, len(seat_hands), funds[i] - committed[i])
+                    legal = legal_actions(hand, len(seat_hands), funds[i] - committed[i])
                     if len(legal) == 1:
                         break
                     action = yield Decision(
@@ -247,12 +260,12 @@ class Table:
                     if action is Action.STAND:
                         break
                     if action is Action.HIT:
-                        hand.add(shoe.draw_seen())
+                        hand.add(draw_seen())
                     elif action is Action.DOUBLE:
                         committed[i] += hand.bet
                         hand.bet *= 2
                         hand.doubled = True
-                        hand.add(shoe.draw_seen())
+                        hand.add(draw_seen())
                         break
                     elif action is Action.SURRENDER:
                         hand.surrendered = True
@@ -276,15 +289,18 @@ class Table:
             dealer.add(shoe.draw())
         shoe.observe(dealer.cards[1])
         dealer_bj = dealer.is_blackjack
-        live = any(
-            not (hd.is_bust or hd.surrendered or hd.is_blackjack)
-            for seat_hands in hands.values()
-            for hd in seat_hands
-        )
+        live = False
+        for seat_hands in hands.values():
+            for hd in seat_hands:
+                if not (hd.hard > 21 or hd.surrendered or hd.is_blackjack):
+                    live = True
+                    break
+            if live:
+                break
         if live and not dealer_bj:
             h17 = rules.dealer_hits_soft_17
             while dealer.total < 17 or (h17 and dealer.total == 17 and dealer.is_soft):
-                dealer.add(shoe.draw_seen())
+                dealer.add(draw_seen())
 
         return self._settle(bets, hands, insurance, dealer, dealer_bj, shuffled)
 
@@ -335,14 +351,20 @@ class Table:
 
             ins = insurance[i]
             ins_net = (2 * ins if dealer_bj else -ins) if ins else 0.0
+            # Plain loops instead of sum(<genexpr>): same order of additions,
+            # so identical floats, but noticeably cheaper per round.
+            net = wagered = 0
+            for hd in seat_hands:
+                net += hd.net
+                wagered += hd.bet
             results[i] = SeatResult(
                 seat=i,
                 initial_bet=bets[i],
                 hands=seat_hands,
                 insurance_bet=ins,
                 insurance_net=ins_net,
-                net=sum(hd.net for hd in seat_hands) + ins_net,
-                wagered=sum(hd.bet for hd in seat_hands) + ins,
+                net=net + ins_net,
+                wagered=wagered + ins,
             )
 
         self.rounds_played += 1
