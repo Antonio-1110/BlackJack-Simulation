@@ -23,6 +23,7 @@ from typing import Any, Callable
 from .engine import Rules
 from .simulation.config import Candidate, SessionSettings
 from .simulation.session import SessionResult, run_session
+from .simulation.stats import interval_stats, paired_edge_difference
 from .strategies import BET_STRATEGIES, PLAY_STRATEGIES, BetStrategy, PlayStrategy
 
 USER_MODULE = "user_strategy"
@@ -72,6 +73,7 @@ def run(code: str, settings: dict[str, Any], progress: ProgressFn | None = None)
     total = session.sessions * len(candidates)
     done = 0
     out = []
+    all_sessions: list[list[SessionResult]] = []
     for ci, cand in enumerate(candidates):
         sessions = []
         for i in range(session.sessions):
@@ -82,9 +84,13 @@ def run(code: str, settings: dict[str, Any], progress: ProgressFn | None = None)
             if progress and (done % 5 == 0 or done == total):
                 progress(done, total)
         out.append(_candidate_result(cand, sessions, session.rounds))
+        all_sessions.append(sessions)
 
     return {
         "candidates": out,
+        # Your edge minus the baseline's, with a paired 95% interval (both
+        # play session i on the same shoe seed). None without a baseline.
+        "comparison": paired_edge_difference(*all_sessions) if len(all_sessions) == 2 else None,
         "play": play_cls.__name__ if play_cls else None,
         "bet": bet_cls.__name__ if bet_cls else None,
         "log": out[0].pop("log"),
@@ -220,6 +226,7 @@ def summary(sessions: list[SessionResult]) -> dict[str, float | None]:
         "avg_max_drawdown": sum(s.max_drawdown for s in sessions) / n,
         "start": sessions[0].start,
         "mean_final": sum(s.final for s in sessions) / n,
+        **interval_stats(sessions),
     }
 
 

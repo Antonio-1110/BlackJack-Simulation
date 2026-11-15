@@ -89,7 +89,13 @@ class Hand:
     @property
     def is_blackjack(self) -> bool:
         """A natural: two-card 21 that did not come from a split."""
-        return len(self.cards) == 2 and not self.is_split and self.total == 21
+        # Inlined is_split / total: called for every hand at settlement.
+        return (
+            len(self.cards) == 2
+            and not self.split_depth
+            and self.has_ace
+            and self.hard == 11
+        )
 
     @property
     def is_pair(self) -> bool:

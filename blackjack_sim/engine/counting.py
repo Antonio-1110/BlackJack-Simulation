@@ -19,12 +19,18 @@ class CountSystem:
     balanced: bool = True
 
     def running_count(self, shoe: Shoe) -> float:
-        seen = shoe.seen
-        return sum(self.tags[v - 1] * seen[v] for v in range(1, 11))
+        # Unrolled (same order of additions as a sum() over values 1..10, so
+        # results are bit-identical): this runs several times per round.
+        t, s = self.tags, shoe.seen
+        return (
+            0 + t[0] * s[1] + t[1] * s[2] + t[2] * s[3] + t[3] * s[4] + t[4] * s[5]
+            + t[5] * s[6] + t[6] * s[7] + t[7] * s[8] + t[8] * s[9] + t[9] * s[10]
+        )
 
     def true_count(self, shoe: Shoe) -> float:
         """Running count per remaining deck (balanced systems only make sense)."""
-        return self.running_count(shoe) / shoe.decks_remaining
+        unseen = shoe.total_cards - shoe.seen_total
+        return self.running_count(shoe) / ((unseen if unseen > 1 else 1) / 52.0)
 
 
 #                   A   2    3    4    5    6    7    8    9   10
